@@ -79,3 +79,25 @@ once-per-process setup (`_dartvelSetUp`, deferred page loaders) keeps state from
 Every Linux build modifies `.metadata` and `analysis_options.yaml` (and touches `pubspec.lock`), so a clean
 worktree is dirty after a build. Repro: `git status` clean, `dartvel build linux`, `git status`. Wanted: a
 build leaves committed project files alone.
+
+## feature port (TunnlTo / WireGuard apps)
+
+### No API for the network kind or the Wi-Fi name
+
+On-demand rules need to know whether the device is on Wi-Fi (and which SSID), mobile data or
+Ethernet. `DV.Platform.network` reports only online/metered/offline/unknown. The app reads
+NetworkManager (`nmcli`) itself on Linux (`lib/platform/network/`); every other target answers
+"unknown", so the app does not evaluate on-demand rules there. Wanted:
+`DV.Platform.network.kind` (wifi/mobile/ethernet/other) and `DV.Platform.network.wifiName`
+(with the location permission it needs on iOS/Android).
+
+### No save-file or share-file API on phones and the web
+
+Exporting a zip uses `DV.Platform.dialogs.saveFile` + a file write, which exists on desktops only.
+`DV.Platform.share` shares text, not files. Wanted: `DV.Platform.share.shareFile(name, bytes)` and a
+browser download fallback.
+
+### No live camera preview
+
+QR import takes one photo (`DV.Platform.camera.takePhoto`) or an image file. A live scanner needs
+a camera preview stream from Dartvel.
