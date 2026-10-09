@@ -268,7 +268,7 @@ class const VersionScreen({
           ),
           const SizedBox(height: 24),
           SelectableText(
-            tr(Strings.viewsVersionExtra, <Object>[SettingsUnlocalized.appName, SettingsUnlocalized.authorName]),
+            tr(Strings.viewsVersionExtra, <Object>['Passepartout', SettingsUnlocalized.authorName]),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),

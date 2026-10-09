@@ -213,8 +213,8 @@ void main() {
       final url = Uri.parse(reportIssueMailto('It drops'));
       expect(url.scheme, 'mailto');
       expect(url.path, SettingsConstants.issuesEmail);
-      expect(url.queryParameters['subject'], 'Passepartout/Dartvel - Report issue');
-      expect(url.queryParameters['body'], contains('Hi,\n\nIt drops\n\n--\n\nApp: Passepartout 0.0.1'));
+      expect(url.queryParameters['subject'], 'Dartvel VPN/Dartvel - Report issue');
+      expect(url.queryParameters['body'], contains('Hi,\n\nIt drops\n\n--\n\nApp: Dartvel VPN 0.0.1'));
     });
   });
 
@@ -375,7 +375,7 @@ void main() {
 
     testWidgets('Version shows name, version, credit line, changelog and Partout', (tester) async {
       await pumpScreen(tester, const VersionScreen(query: <String, String>{}));
-      expect(find.text('Passepartout'), findsOneWidget);
+      expect(find.text('Dartvel VPN'), findsOneWidget);
       expect(find.text(SettingsBundle.versionString), findsOneWidget);
       expect(find.text(tr(Strings.viewsVersionExtra, <Object>['Passepartout', 'Davide De Rosa (keeshux)'])), findsOneWidget);
       expect(find.text('CHANGELOG'), findsOneWidget);

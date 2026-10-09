@@ -21,11 +21,11 @@ void main() {
     expect(credits.licenses.every((l) => l.licenseUrl.startsWith('https://')), isTrue);
   });
 
-  test('asset is byte-identical to upstream credits.json', () {
-    expect(
-      File('assets/credits/credits.json').readAsStringSync(),
-      File('../app-apple/Sources/AppResources/Resources/credits.json').readAsStringSync(),
-    );
+  test('asset includes Passepartout attribution', () {
+    final json = jsonDecode(File('assets/credits/credits.json').readAsStringSync()) as Map<String, dynamic>;
+    final credits = Credits.fromJson(json);
+    expect(credits.licenses.any((l) => l.name == 'Passepartout' && l.licenseName == 'GPL-3.0'), isTrue);
+    expect(credits.notices.any((n) => n.name == 'Passepartout' && n.message.contains('Davide De Rosa')), isTrue);
   });
 
   test('ChangelogEntry parses like upstream', () {
@@ -53,8 +53,8 @@ void main() {
     expect(SettingsConstants.donateUrl, '${websites['partoutURL']}/donate');
     expect(SettingsConstants.discussionsUrl, github['discussionsURL']);
     expect(SettingsConstants.issuesUrl, github['issuesURL']);
-    expect(SettingsConstants.issuesEmail,
-        '${(emails['recipients'] as Map<String, dynamic>)['issues']}@${emails['domain']}');
+    expect(SettingsConstants.issuesEmail, 'info@sigmadev.digital');
+    expect(SettingsUnlocalized.appName, 'Dartvel VPN');
   });
 
   test('version matches pubspec', () {

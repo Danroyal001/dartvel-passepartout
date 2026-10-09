@@ -51,7 +51,7 @@ class const _App({required final List<String> arguments}) extends StatelessWidge
   Widget build(BuildContext context) {
     final appearance = context.global<Preferences>().appearance;
     return MaterialApp.router(
-      title: 'Passepartout',
+      title: 'Dartvel VPN',
       debugShowCheckedModeBanner: false,
       theme: passepartoutTheme(.light),
       darkTheme: passepartoutTheme(.dark),
