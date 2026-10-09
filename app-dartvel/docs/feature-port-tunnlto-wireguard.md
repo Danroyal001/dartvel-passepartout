@@ -68,10 +68,23 @@ Linux (this server): `flutter test` with the Partout engine
 `tunnel_archive_test`, `qr_import_test`, `profile_search_test`, `profile_transfer_test`
 (engine), `feature_port_widgets_test`.
 
+Real tunnel in network namespaces (`tool/netns_test/run.sh`, run 2026-10-09 on this server): two
+namespaces joined by a veth pair, a kernel WireGuard peer in one, the compiled `partout-tunnel` helper
+in the other. Host routes, links and DNS were compared before and after: unchanged.
+- The helper reaches `connected`, the WireGuard handshake completes (engine log and the peer's
+  `latest-handshakes`), and the helper reports transfer counts.
+- **Partout's default Linux tun controller creates `tun0` but applies no address, route or link-up**
+  (`ctrl_set_tunnel((nil))`). With the address and route added by hand inside the namespace,
+  ping through the tunnel works (3/3) and the counts rise. So on Linux the data path works, but
+  **nothing configures the interface yet**: profile addresses, AllowedIPs routes and IP-module routes
+  (therefore rule groups) are not applied. That needs a tun controller in the helper (netlink:
+  address, MTU, routes, DNS, and restore on stop), next step for the Linux port.
+- Stopping the helper (SIGTERM) exits 0 and removes `tun0`.
+- The rule-group case checks the engine input: the excluded route is in the IP module handed to the
+  engine.
+
 Not verified here:
-- No tunnel was brought up (the Linux helper is not installed on this hosting box on purpose), so
-  on-demand auto-connect and rule-group routes were tested against a fake engine, not a live tunnel.
-  Whether Partout's Linux daemon applies IP module routes for WireGuard must be checked in a VM.
+- On-demand auto-connect was tested against a fake engine, not a live tunnel.
 - NetworkManager probing was tested on recorded `nmcli` output; this server has no Wi-Fi.
 - Save dialogs, camera capture and share sheets need a desktop session or a phone.
 - macOS/iOS/Windows/Android builds need their hosts (Xcode etc.); nothing in this change touches
