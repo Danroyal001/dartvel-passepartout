@@ -6,16 +6,17 @@
 // `ProfileRowView`, `ProfileCardView`, `ProfileContextMenu`, `AppToolbar`,
 // `AddProfileMenu`, `ProfilesLayoutPicker`).
 
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../dartvel_client/dartvel_client.dart';
 import '../../domain/profile.dart';
+import '../../l10n/app_strings.dart';
 import '../../l10n/strings.g.dart';
 import '../../state/app_state.dart';
 import '../../state/profile_draft.dart';
 import '../kit.dart';
+import 'profile_transfer.dart';
 
 /// `isBigDevice`: iPad/Mac layout (toolbar group, grid available).
 bool isBigLayout(BuildContext context) => MediaQuery.sizeOf(context).width >= 700;
@@ -29,11 +30,23 @@ class ProfilesScreen extends StatefulWidget {
 
 class _ProfilesScreenState extends State<ProfilesScreen> {
   final TextEditingController _search = TextEditingController();
+  final FocusNode _searchFocus = FocusNode(debugLabel: 'profiles/search');
 
   @override
   void dispose() {
     _search.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  /// Enter in the search field connects the first match, so a long list
+  /// works as a quick switcher: Ctrl+K (Cmd+K), type, Enter.
+  void _connectFirstMatch() {
+    final matches = ProfileStore.state.filtered;
+    if (matches.isEmpty) return;
+    final profile = matches.first;
+    if (TunnelStore.state.isActive(profile.id)) return;
+    runGuarded(context, () => TunnelStore.connect(profile), title: profile.name);
   }
 
   @override
@@ -56,12 +69,18 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
           : _ProfileList(header: header, profiles: profiles.filtered);
     }
 
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _searchFocus.requestFocus,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _searchFocus.requestFocus,
+      },
+      child: Scaffold(
       appBar: AppBar(
         leading: big ? null : const _SettingsButton(),
         title: Semantics(headingLevel: 1, child: const Text('Dartvel VPN')),
         actions: <Widget>[
-          if (profiles.hasProfiles) _SearchField(controller: _search),
+          if (profiles.hasProfiles)
+            _SearchField(controller: _search, focusNode: _searchFocus, onSubmitted: _connectFirstMatch),
           const AddProfileMenu(),
           if (big) ...<Widget>[
             const _SettingsButton(),
@@ -71,6 +90,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
         ],
       ),
       body: SafeArea(top: false, child: body),
+      ),
     );
   }
 }
@@ -98,8 +118,12 @@ class const _LayoutPicker({required final ProfilesLayout layout}) extends Statel
       );
 }
 
-/// `.searchable(text:)`: filters profiles by name.
-class const _SearchField({required final TextEditingController controller}) extends StatelessWidget {
+/// `.searchable(text:)`: filters profiles by name, module type and server.
+class const _SearchField({
+  required final TextEditingController controller,
+  required final FocusNode focusNode,
+  required final VoidCallback onSubmitted,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ConstrainedBox(
         constraints: BoxConstraints(maxWidth: isBigLayout(context) ? 220 : 140),
@@ -107,11 +131,14 @@ class const _SearchField({required final TextEditingController controller}) exte
           padding: const .symmetric(vertical: 8),
           child: TextField(
             controller: controller,
+            focusNode: focusNode,
             onChanged: ProfileStore.search,
+            onSubmitted: (_) => onSubmitted(),
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               isDense: true,
-              hintText: 'Search',
+              hintText: isBigLayout(context) ? AppStrings.searchHint : AppStrings.search,
+              semanticCounterText: AppStrings.searchHint,
               prefixIcon: const Icon(Icons.search, size: 18),
               filled: true,
               border: OutlineInputBorder(borderRadius: .circular(10), borderSide: BorderSide.none),
@@ -140,10 +167,23 @@ class const AddProfileMenu() extends StatelessWidget {
             child: Text('${tr(Strings.viewsAppToolbarImportFile)}...'),
           ),
           MenuItemButton(
+            leadingIcon: const Icon(Icons.qr_code_scanner),
+            onPressed: () => importQrCode(context),
+            child: Text('${tr(Strings.viewsAppToolbarImportQrTitle)}...'),
+          ),
+          MenuItemButton(
             leadingIcon: const Icon(Icons.text_snippet_outlined),
             onPressed: () => DV.Navigation.push(DVRoutes.importtext),
             child: Text('${tr(Strings.viewsAppToolbarImportTextTitle)}...'),
           ),
+          if (ProfileStore.state.hasProfiles) ...<Widget>[
+            const Divider(height: 1),
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.archive_outlined),
+              onPressed: () => exportAllProfiles(context),
+              child: const Text('${AppStrings.exportAll}...'),
+            ),
+          ],
         ],
         builder: (context, controller, _) => IconButton(
           tooltip: tr(Strings.globalActionsAdd),
@@ -158,15 +198,12 @@ void newEmptyProfile(BuildContext context) {
   DV.Navigation.push(DVRoutes.profiles(id: profile.id));
 }
 
-/// `ProfileImporterModifier`: pick .ovpn/.conf files and import each.
+/// `ProfileImporterModifier`: pick .ovpn/.conf files (or .zip archives of
+/// them, as the WireGuard apps export) and import each.
 Future<void> importProfileFile(BuildContext context) => runGuarded(context, () async {
       final files = await DV.Platform.fileStorage.pick(multiple: true);
-      for (final file in files) {
-        final bytes = await file.readBytes();
-        if (bytes.length > 1024 * 1024) throw FormatException('${file.name}: file too large');
-        final name = file.name.contains('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name;
-        await ProfileStore.importText(utf8.decode(bytes, allowMalformed: true), name: name);
-      }
+      if (files.isEmpty || !context.mounted) return;
+      await importPickedFiles(context, files);
     }, title: tr(Strings.globalActionsImport));
 
 // ---------------------------------------------------------------------------
@@ -372,6 +409,12 @@ class const ProfileMenuButton({
         onPressed: () => editProfile(profile),
         child: Text(tr(Strings.globalActionsEdit)),
       ),
+      if (profile.activeConnection != null)
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.ios_share),
+          onPressed: () => exportProfileFile(context, profile),
+          child: const Text('${AppStrings.exportProfile}...'),
+        ),
       if (installed)
         MenuItemButton(
           leadingIcon: const Icon(Icons.visibility_off_outlined),
