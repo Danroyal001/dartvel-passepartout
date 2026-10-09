@@ -14,9 +14,11 @@ import 'package:flutter/services.dart';
 
 import '../../dartvel_client/dartvel_client.dart';
 import '../../domain/profile.dart';
+import '../../l10n/app_strings.dart';
 import '../../l10n/strings.g.dart';
 import '../../state/app_state.dart';
 import '../../state/profile_draft.dart';
+import '../../state/rule_groups_store.dart';
 import '../kit.dart';
 import '../modules/common/module_validation.dart';
 import '../../platform/vpn_service.dart';
@@ -142,6 +144,7 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                 ],
               ),
               _ModulesSection(profile: current, errorModuleIds: _errorModuleIds),
+              _RuleGroupsSection(profile: current),
               PSSection(
                 header: tr(Strings.modulesGeneralSectionsBehaviorHeader),
                 children: <Widget>[
@@ -195,6 +198,35 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The rule groups attached to this profile: a switch per group, then a link
+/// to manage them (TunnlTo's reusable rules, decoupled from the tunnel).
+class const _RuleGroupsSection({required final TunnelProfile profile}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final groups = context.global<RuleGroupsState>().sorted;
+    final attached = profile.ruleGroupIds.toSet();
+    return PSSection(
+      header: AppStrings.ruleGroups,
+      footer: AppStrings.profileRuleGroupsFooter,
+      children: <Widget>[
+        for (final group in groups)
+          PSToggleRow(
+            key: ValueKey<String>('profile/rule-group/${group.id}'),
+            title: group.name,
+            subtitle: group.summary,
+            value: attached.contains(group.id),
+            onChanged: (_) => DraftStore.update((p) => p.togglingRuleGroup(group.id)),
+          ),
+        PSRow(
+          title: AppStrings.manageRuleGroups,
+          navigates: true,
+          onTap: () => DV.Navigation.push(DVRoutes.settingsrulegroups),
+        ),
+      ],
     );
   }
 }

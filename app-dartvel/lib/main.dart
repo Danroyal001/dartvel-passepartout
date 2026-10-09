@@ -12,7 +12,9 @@ import 'platform/vpn_service.dart';
 import 'platform/web_vpn_service.dart';
 import 'state/app_log.dart';
 import 'state/app_state.dart';
+import 'state/on_demand_store.dart';
 import 'state/profile_draft.dart';
+import 'state/rule_groups_store.dart';
 import 'ui/desktop_shell.dart';
 import 'ui/kit.dart';
 
@@ -28,9 +30,14 @@ void main(List<String> arguments) async {
   TunnelStore.init();
   PreferencesStore.init();
   DraftStore.init();
+  RuleGroupStore.init();
+  OnDemandStore.init();
   runApp(createDartvelApp(arguments: arguments));
   await PreferencesStore.load();
   await ProfileStore.load();
+  await RuleGroupStore.load();
+  await OnDemandStore.load();
+  OnDemandStore.start();
   await DesktopShell.start();
 }
 

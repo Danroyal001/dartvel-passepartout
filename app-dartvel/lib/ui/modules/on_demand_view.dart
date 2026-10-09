@@ -7,11 +7,18 @@
 // Upstream shows the Mobile and "Ethernet (Mac/TV)" toggles on every
 // platform, so this does too. Upstream fills a new SSID row with the current
 // Wi-Fi name (CoreLocation); there is no Dartvel API for that yet, so a new
-// row starts empty (see docs/DARTVEL-GAPS.md).
+// row starts empty (see docs/DARTVEL-GAPS.md). Where the app can read the
+// network itself (Linux, through NetworkManager) an "Add current Wi-Fi" row
+// and a line saying what the rules do on the current network follow, as the
+// WireGuard apps show; there the app also applies the rules
+// (state/on_demand_store.dart).
 
 import 'package:flutter/material.dart';
 
+import '../../domain/on_demand_rules.dart';
+import '../../l10n/app_strings.dart';
 import '../../l10n/strings.g.dart';
+import '../../platform/network/current_network.dart';
 import '../kit.dart';
 import 'common/editable_list_section.dart';
 import 'common/module_builder_cache.dart';
@@ -91,6 +98,15 @@ final class OnDemandBuilder {
       map.putIfAbsent(row.value.name, () => row.value.on);
     }
     return map;
+  }
+
+  /// Adds [name] as an enabled SSID, or enables it when it is listed.
+  void addSSID(String name) {
+    if (ssids.any((row) => row.value.name == name)) {
+      setSSIDOn(name, true);
+    } else {
+      ssids = <ListItem<SsidEntry>>[...ssids, ListItem<SsidEntry>((name: name, on: true))];
+    }
   }
 
   /// `build()`.
@@ -179,5 +195,58 @@ List<Widget> onDemandSections(BuildContext context, ModuleViewArgs args) {
         ]),
       ),
     ],
+    if (CurrentNetwork.isSupported)
+      OnDemandCurrentNetworkSection(
+        module: Map<String, dynamic>.from(builder.changes),
+        showsAddWifi: builder.policy != 'any',
+        onAddWifi: (ssid) => edit((b) => b.addSSID(ssid)),
+      ),
   ];
+}
+
+/// "Add current Wi-Fi" and what the rules do on the network the device is on.
+class OnDemandCurrentNetworkSection extends StatefulWidget {
+  const OnDemandCurrentNetworkSection({super.key, required this.module, required this.showsAddWifi, required this.onAddWifi});
+
+  final Map<String, dynamic> module;
+  final bool showsAddWifi;
+  final ValueChanged<String> onAddWifi;
+
+  @override
+  State<OnDemandCurrentNetworkSection> createState() => _OnDemandCurrentNetworkSectionState();
+}
+
+class _OnDemandCurrentNetworkSectionState extends State<OnDemandCurrentNetworkSection> {
+  NetworkSnapshot? _network;
+
+  @override
+  void initState() {
+    super.initState();
+    CurrentNetwork.probe().then((network) {
+      if (mounted) setState(() => _network = network);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final network = _network;
+    final ssid = network?.kind == .wifi ? network?.ssid : null;
+    final decision = network == null ? null : evaluateOnDemand(widget.module, network);
+    final String? now = switch (decision) {
+      .connect => AppStrings.onDemandNow(network!.label, AppStrings.onDemandConnect),
+      .disconnect => AppStrings.onDemandNow(network!.label, AppStrings.onDemandDisconnect),
+      _ => null,
+    };
+    return PSSection(
+      footer: <String>[?now, AppStrings.onDemandArmedFooter].join('\n\n'),
+      children: <Widget>[
+        if (widget.showsAddWifi)
+          PSRow(
+            title: AppStrings.addCurrentWifi,
+            subtitle: ssid ?? AppStrings.noCurrentWifi,
+            onTap: ssid == null ? null : () => widget.onAddWifi(ssid),
+          ),
+      ],
+    );
+  }
 }

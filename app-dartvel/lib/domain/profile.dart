@@ -74,6 +74,24 @@ class const TunnelProfile({required final Map<String, dynamic> json}) {
   /// "OpenVPN, DNS" — upstream's `localizedDescription(optionalStyle: .moduleTypes)`.
   String get moduleSummary => modules.where((m) => isActive(m.id)).map((m) => m.typeLabel).join(', ');
 
+  /// What search matches, lower case: the name, the module types and the
+  /// servers of the connection modules (WireGuard peer endpoints, OpenVPN
+  /// remotes), so a long list can be searched by server as well as by name.
+  String get searchText {
+    final parts = <String>[name, ...modules.map((m) => m.typeLabel)];
+    for (final module in modules) {
+      final configuration = module.value['configuration'];
+      if (configuration is! Map) continue;
+      for (final peer in (configuration['peers'] as List?) ?? const <dynamic>[]) {
+        if (peer is Map && peer['endpoint'] is String) parts.add(peer['endpoint'] as String);
+      }
+      for (final remote in (configuration['remotes'] as List?) ?? const <dynamic>[]) {
+        if (remote is String) parts.add(remote);
+      }
+    }
+    return parts.join(' ').toLowerCase();
+  }
+
   bool get disconnectsOnSleep => (json['behavior'] as Map?)?['disconnectsOnSleep'] == true;
   bool get includesAllNetworks => (json['behavior'] as Map?)?['includesAllNetworks'] == true;
 

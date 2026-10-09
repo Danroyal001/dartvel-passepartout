@@ -34,6 +34,9 @@ class const WireGuardConfiguration({required final TaggedModule module}) {
 
   bool get hasConfiguration => _value['configuration'] is Map;
 
+  /// The `WireGuard.Configuration` JSON, for whole-configuration checks.
+  Map<String, dynamic>? get rawConfiguration => hasConfiguration ? _configuration : null;
+
   Map<String, dynamic> get _configuration =>
       Map<String, dynamic>.from((_value['configuration'] as Map?) ?? const <String, dynamic>{});
 

@@ -23,6 +23,9 @@ dependencies:
   ffi: ^2.1.4
   go_router: ^14.2.0
   dio: ^5.5.0
+  archive: ^4.0.0
+  image: ^4.3.0
+  zxing2: ^0.2.4
   dartvel_core: 
     path: /home/sigmadev/dartvel_dev/packages/dartvel_core
   dartvel_shelf: 

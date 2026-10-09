@@ -18,7 +18,7 @@ packages:
     source: hosted
     version: "14.5.0"
   archive:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: archive
       sha256: "6c5bcd986e06b94e3c40244af471750840a3d2341d1f9763a1100a14add517b4"
@@ -57,6 +57,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  charcode:
+    dependency: transitive
+    description:
+      name: charcode
+      sha256: fb0f1107cac15a5ea6ef0a6ef71a807b9e4267c713bb93e00e92d737cc8dbd8a
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
   cli_util:
     dependency: transitive
     description:
@@ -119,28 +127,28 @@ packages:
       path: "/home/sigmadev/dartvel_dev/packages/dartvel_cli"
       relative: false
     source: path
-    version: "0.11.4"
+    version: "0.11.5"
   dartvel_core:
     dependency: "direct main"
     description:
       path: "/home/sigmadev/dartvel_dev/packages/dartvel_core"
       relative: false
     source: path
-    version: "0.11.4"
+    version: "0.11.5"
   dartvel_flutter:
     dependency: "direct main"
     description:
       path: "/home/sigmadev/dartvel_dev/packages/dartvel_flutter"
       relative: false
     source: path
-    version: "0.11.4"
+    version: "0.11.5"
   dartvel_shelf:
     dependency: "direct main"
     description:
       path: "/home/sigmadev/dartvel_dev/packages/dartvel_shelf"
       relative: false
     source: path
-    version: "0.11.4"
+    version: "0.11.5"
   dbus:
     dependency: transitive
     description:
@@ -277,7 +285,7 @@ packages:
     source: hosted
     version: "4.1.2"
   image:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: image
       sha256: a1e7f4951e538a568e14b856702afc9ae1d2f4b202daced8d22c1b9cd211ce89
@@ -689,6 +697,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.4"
+  zxing2:
+    dependency: "direct main"
+    description:
+      name: zxing2
+      sha256: "2677c49a3b9ca9457cb1d294fd4bd5041cac6aab8cdb07b216ba4e98945c684f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.4"
 sdks:
   dart: ">=3.13.0 <4.0.0"
   flutter: ">=3.47.0"

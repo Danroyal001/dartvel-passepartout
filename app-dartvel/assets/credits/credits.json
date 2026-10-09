@@ -37,6 +37,18 @@
             "licenseName": "MIT",
             "licenseURL": "https://raw.githubusercontent.com/WireGuard/wireguard-go/refs/heads/master/LICENSE"
         }, {
+            "name": "archive (Dart)",
+            "licenseName": "MIT",
+            "licenseURL": "https://raw.githubusercontent.com/brendan-duncan/archive/main/LICENSE"
+        }, {
+            "name": "image (Dart)",
+            "licenseName": "MIT",
+            "licenseURL": "https://raw.githubusercontent.com/brendan-duncan/image/main/LICENSE"
+        }, {
+            "name": "zxing2 (Dart port of ZXing)",
+            "licenseName": "BSD-3-Clause",
+            "licenseURL": "https://raw.githubusercontent.com/xvrh/zxing-dart/master/LICENSE"
+        }, {
             "name": "Passepartout",
             "licenseName": "GPL-3.0",
             "licenseURL": "https://raw.githubusercontent.com/partout-io/passepartout/master/LICENSE"
@@ -49,6 +61,12 @@
         }, {
             "name": "Passepartout",
             "message": "Dartvel VPN is based on Passepartout by Davide De Rosa (keeshux), licensed under GPLv3. Original project: https://github.com/partout-io/passepartout"
+        }, {
+            "name": "WireGuard apps",
+            "message": "On-demand rules for Wi-Fi, cellular and Ethernet, zip and QR import, zip export, \"Exclude private IPs\" and inline configuration checks follow features of the official WireGuard apps (wireguard-apple and wireguard-windows, MIT; wireguard-android, Apache-2.0). Dartvel VPN implements them in its own code; no WireGuard app source code is included."
+        }, {
+            "name": "TunnlTo",
+            "message": "Reusable rule groups kept apart from tunnels, and searching tunnels by server, are ideas from the TunnlTo desktop app. No TunnlTo code or assets are used."
         }, {
             "name": "OpenVPN",
             "message": "© Copyright 2024 OpenVPN | OpenVPN is a registered trademark of OpenVPN, Inc."

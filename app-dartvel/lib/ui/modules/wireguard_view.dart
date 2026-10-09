@@ -5,12 +5,15 @@
 
 import 'package:flutter/material.dart';
 
+import '../../domain/ip_ranges.dart';
+import '../../l10n/app_strings.dart';
 import '../../l10n/strings.g.dart';
 import '../../platform/vpn_service.dart';
 import '../kit.dart';
 import 'module_view.dart';
 import 'wireguard/wireguard_configuration.dart';
 import 'wireguard/wireguard_import.dart';
+import 'wireguard/wireguard_issues.dart';
 import 'wireguard/wireguard_rows.dart';
 
 /// Upstream `Strings.Unlocalized.Placeholders` for MTU and keep-alive.
@@ -36,11 +39,13 @@ List<Widget> wireGuardSections(BuildContext context, ModuleViewArgs args) {
 Widget? wireGuardSubpage(BuildContext context, ModuleViewArgs args, String section) {
   final field = _WireGuardField.parse(args, section);
   if (field == null) return null;
+  final check = field.check;
   return PSLongContentPage(
     title: field.title,
     text: field.text,
     keyboardType: field.keyboardType,
     onChanged: field.onChanged,
+    validate: check == null ? null : (text) => wireGuardFieldError(check, text),
   );
 }
 
@@ -52,6 +57,7 @@ class const _WireGuardField({
   required final ValueChanged<String> onChanged,
   final String? Function(String text)? preview,
   final TextInputType? keyboardType,
+  final WireGuardIssue? Function(String text)? check,
 }) {
   /// The field [section] names in [args]' module, or null when there is none.
   static _WireGuardField? parse(ModuleViewArgs args, String section) {
@@ -70,12 +76,18 @@ class const _WireGuardField({
     return null;
   }
 
-  Widget row(ModuleViewArgs args) => PSLongContentRow(
-        title: title,
-        text: text,
-        preview: preview,
-        onTap: () => pushModuleSection(args, section),
-      );
+  /// The row, flagged with [issues]' entry for this field (checks that need
+  /// the whole configuration, such as duplicate peer keys, are in there).
+  Widget row(ModuleViewArgs args, Map<String, WireGuardIssue> issues) {
+    final issue = issues[section];
+    return PSLongContentRow(
+      title: title,
+      text: text,
+      preview: preview,
+      error: issue == null ? null : wireGuardIssueText(issue),
+      onTap: () => pushModuleSection(args, section),
+    );
+  }
 }
 
 /// Edits go to the draft's current module: the args a page holds are rebuilt
@@ -87,6 +99,7 @@ List<_WireGuardField> _interfaceFields(ModuleViewArgs args, WireGuardConfigurati
         section: 'private-key',
         title: tr(Strings.globalNounsPrivateKey),
         text: configuration.privateKey,
+        check: WireGuardValidation.privateKey,
         onChanged: (text) => args.onChanged(_current(args).withPrivateKey(text)),
       ),
       _WireGuardField(
@@ -94,6 +107,7 @@ List<_WireGuardField> _interfaceFields(ModuleViewArgs args, WireGuardConfigurati
         title: tr(Strings.globalNounsAddresses),
         text: configuration.addressesText,
         preview: asNumberOfEntries,
+        check: WireGuardValidation.addresses,
         keyboardType: TextInputType.url,
         onChanged: (text) => args.onChanged(_current(args).withAddresses(text)),
       ),
@@ -102,6 +116,7 @@ List<_WireGuardField> _interfaceFields(ModuleViewArgs args, WireGuardConfigurati
         title: tr(Strings.globalNounsServers),
         text: configuration.dnsServersText,
         preview: asNumberOfEntries,
+        check: WireGuardValidation.dnsServers,
         keyboardType: TextInputType.url,
         onChanged: (text) => args.onChanged(_current(args).withDnsServers(text)),
       ),
@@ -127,18 +142,21 @@ List<_WireGuardField> _peerFields(ModuleViewArgs args, WireGuardPeer peer, int i
       section: '$prefix-public-key',
       title: tr(Strings.globalNounsPublicKey),
       text: peer.publicKey,
+      check: WireGuardValidation.publicKey,
       onChanged: (text) => edit((peer) => peer.withPublicKey(text)),
     ),
     _WireGuardField(
       section: '$prefix-preshared-key',
       title: tr(Strings.modulesWireguardPresharedKey),
       text: peer.preSharedKey,
+      check: WireGuardValidation.preSharedKey,
       onChanged: (text) => edit((peer) => peer.withPreSharedKey(text)),
     ),
     _WireGuardField(
       section: '$prefix-endpoint',
       title: tr(Strings.globalNounsEndpoint),
       text: peer.endpoint,
+      check: WireGuardValidation.endpoint,
       onChanged: (text) => edit((peer) => peer.withEndpoint(text)),
     ),
     _WireGuardField(
@@ -146,6 +164,7 @@ List<_WireGuardField> _peerFields(ModuleViewArgs args, WireGuardPeer peer, int i
       title: tr(Strings.modulesWireguardAllowedIps),
       text: peer.allowedIPsText,
       preview: asNumberOfEntries,
+      check: WireGuardValidation.allowedIPs,
       keyboardType: TextInputType.url,
       onChanged: (text) => edit((peer) => peer.withAllowedIPs(text)),
     ),
@@ -155,10 +174,11 @@ List<_WireGuardField> _peerFields(ModuleViewArgs args, WireGuardPeer peer, int i
 List<Widget> _configurationSections(BuildContext context, ModuleViewArgs args, WireGuardConfiguration configuration) {
   final peers = configuration.peers;
   final interfaceFields = _interfaceFields(args, configuration);
+  final issues = WireGuardValidation.configuration(configuration.rawConfiguration);
   return <Widget>[
     // privateKeySection
     PSSection(header: tr(Strings.modulesWireguardInterface), children: <Widget>[
-      interfaceFields[0].row(args),
+      interfaceFields[0].row(args, issues),
       WireGuardPublicKeyRow(privateKey: configuration.privateKey),
       PSRow(
         title: tr(Strings.modulesWireguardPrivateKeyGenerate),
@@ -170,22 +190,23 @@ List<Widget> _configurationSections(BuildContext context, ModuleViewArgs args, W
     ]),
     // interfaceSection
     PSSection(children: <Widget>[
-      interfaceFields[1].row(args),
+      interfaceFields[1].row(args, issues),
       PSTextRow(
         label: 'MTU',
         value: configuration.mtuText,
         placeholder: _mtuPlaceholder,
         keyboardType: TextInputType.number,
+        error: issues['mtu'] == null ? null : wireGuardIssueText(issues['mtu']!),
         onChanged: (text) => args.onChanged(_current(args).withMtu(text)),
       ),
     ]),
     // dnsSection
     PSSection(header: 'DNS', footer: tr(Strings.modulesWireguardInterfaceDnsFooter), children: <Widget>[
-      interfaceFields[2].row(args),
-      interfaceFields[3].row(args),
+      interfaceFields[2].row(args, issues),
+      interfaceFields[3].row(args, issues),
     ]),
     // peerSections
-    for (var index = 0; index < peers.length; index++) _peerSection(args, peers[index], index),
+    for (var index = 0; index < peers.length; index++) _peerSection(args, peers[index], index, issues),
     // addPeerButton
     PSSection(children: <Widget>[
       Opacity(
@@ -199,16 +220,42 @@ List<Widget> _configurationSections(BuildContext context, ModuleViewArgs args, W
   ];
 }
 
-Widget _peerSection(ModuleViewArgs args, WireGuardPeer peer, int index) => PSSection(
+Widget _peerSection(
+  ModuleViewArgs args,
+  WireGuardPeer peer,
+  int index,
+  Map<String, WireGuardIssue> issues,
+) {
+  final keepAliveIssue = issues['peer-${index + 1}-keep-alive'];
+  final canExclude = PrivateIpExclusion.isAvailable(peer.allowedIPs);
+  return PSSection(
       key: ValueKey<String>('wireguard-peer-$index'),
       header: tr(Strings.modulesWireguardPeer, <Object>[index + 1]),
+      footer: canExclude ? AppStrings.excludePrivateIpsFooter : null,
       children: <Widget>[
-        for (final field in _peerFields(args, peer, index)) field.row(args),
+        for (final field in _peerFields(args, peer, index)) field.row(args, issues),
+        if (canExclude)
+          PSToggleRow(
+            key: ValueKey<String>('wireguard-peer-$index-exclude-private'),
+            title: AppStrings.excludePrivateIps,
+            value: PrivateIpExclusion.isOn(peer.allowedIPs),
+            onChanged: (on) {
+              final current = _current(args);
+              if (index >= current.peers.length) return;
+              final allowed = current.peers[index].allowedIPs;
+              final dns = current.dnsServers;
+              final next = on
+                  ? PrivateIpExclusion.excluding(allowed, dnsServers: dns)
+                  : PrivateIpExclusion.including(allowed, dnsServers: dns);
+              args.onChanged(current.withPeer(index, current.peers[index].withAllowedIPs(next.join(wireGuardListSeparator))));
+            },
+          ),
         PSTextRow(
           label: tr(Strings.globalNounsKeepAlive),
           value: peer.keepAliveText,
           placeholder: _keepAlivePlaceholder,
           keyboardType: TextInputType.number,
+          error: keepAliveIssue == null ? null : wireGuardIssueText(keepAliveIssue),
           onChanged: (text) {
             final current = _current(args);
             args.onChanged(current.withPeer(index, current.peers[index].withKeepAlive(text)));
@@ -221,3 +268,4 @@ Widget _peerSection(ModuleViewArgs args, WireGuardPeer peer, int index) => PSSec
         ),
       ],
     );
+}

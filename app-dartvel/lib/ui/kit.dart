@@ -160,6 +160,7 @@ class const PSRow({
   final bool destructive = false,
   final bool monospaced = false,
   final bool selectable = false,
+  final bool error = false,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -176,7 +177,9 @@ class const PSRow({
       title: Text(title, style: TextStyle(color: titleColor)),
       subtitle: subtitle == null
           ? null
-          : (selectable ? SelectableText(subtitle!, style: valueStyle) : Text(subtitle!, style: valueStyle)),
+          : error
+              ? PSFieldError(text: subtitle!)
+              : (selectable ? SelectableText(subtitle!, style: valueStyle) : Text(subtitle!, style: valueStyle)),
       trailing: Row(mainAxisSize: .min, children: <Widget>[
         if (value != null)
           ConstrainedBox(
@@ -221,6 +224,7 @@ class PSTextRow extends StatefulWidget {
     this.obscure = false,
     this.onSubmitted,
     this.autofocus = false,
+    this.error,
   });
 
   final String label;
@@ -232,6 +236,9 @@ class PSTextRow extends StatefulWidget {
   final bool obscure;
   final ValueChanged<String>? onSubmitted;
   final bool autofocus;
+
+  /// Shown under the field in red while the text is invalid.
+  final String? error;
 
   @override
   State<PSTextRow> createState() => _PSTextRowState();
@@ -255,7 +262,7 @@ class _PSTextRowState extends State<PSTextRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    final row = Padding(
       padding: const .symmetric(horizontal: 16, vertical: 4),
       child: Row(children: <Widget>[
         ConstrainedBox(
@@ -283,6 +290,12 @@ class _PSTextRowState extends State<PSTextRow> {
         ),
       ]),
     );
+    final error = widget.error;
+    if (error == null) return row;
+    return Column(crossAxisAlignment: .stretch, children: <Widget>[
+      row,
+      Padding(padding: const .fromLTRB(16, 0, 16, 8), child: PSFieldError(text: error)),
+    ]);
   }
 }
 
@@ -353,9 +366,21 @@ class const ConnectionStatusText({super.key, required final String profileId, fi
       text = tunnel.lastErrorCode!;
     } else if (status == .connected && (tunnel.received > 0 || tunnel.sent > 0)) {
       text = '↓${formatBytes(tunnel.received)} ↑${formatBytes(tunnel.sent)}';
+      final since = tunnel.connectedSince;
+      // Updated with every transfer count the engine reports.
+      if (since != null) text = '$text · ${formatElapsed(DateTime.now().difference(since))}';
     }
     return Text(text, style: (style ?? const TextStyle()).copyWith(color: PSColors.status(context, tunnel, profileId)));
   }
+}
+
+/// How long a tunnel has been up: `0:42`, `12:03`, `1:02:03`.
+String formatElapsed(Duration elapsed) {
+  final seconds = elapsed.isNegative ? 0 : elapsed.inSeconds;
+  final hours = seconds ~/ 3600;
+  final minutes = (seconds % 3600) ~/ 60;
+  final rest = (seconds % 60).toString().padLeft(2, '0');
+  return hours > 0 ? '$hours:${minutes.toString().padLeft(2, '0')}:$rest' : '$minutes:$rest';
 }
 
 String formatBytes(int bytes) {
@@ -486,18 +511,30 @@ class const PSLongContentRow({
   required final String text,
   required final VoidCallback onTap,
   final String? Function(String text)? preview,
+  final String? error,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shown = preview == null ? text : preview!(text);
     return PSRow(
       title: title,
+      subtitle: error,
+      error: error != null,
       value: (shown == null || shown.isEmpty) ? null : _middleTruncated(shown),
       monospaced: preview == null,
       navigates: true,
       onTap: onTap,
     );
   }
+}
+
+/// An inline field error: red text, announced to screen readers as it changes.
+class const PSFieldError({super.key, required final String text}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Semantics(
+        liveRegion: true,
+        child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: PSColors.error)),
+      );
 }
 
 /// Upstream truncates previews in the middle (`.truncationMode(.middle)`).
@@ -511,12 +548,22 @@ String _middleTruncated(String text, {int maxLength = 24}) {
 /// text. Editable when [onChanged] is set (each keystroke reports it);
 /// otherwise selectable, with a copy action.
 class PSLongContentPage extends StatefulWidget {
-  const PSLongContentPage({super.key, required this.title, required this.text, this.onChanged, this.keyboardType});
+  const PSLongContentPage({
+    super.key,
+    required this.title,
+    required this.text,
+    this.onChanged,
+    this.keyboardType,
+    this.validate,
+  });
 
   final String title;
   final String text;
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
+
+  /// The error to show under the editor for the current text, or null.
+  final String? Function(String text)? validate;
 
   @override
   State<PSLongContentPage> createState() => _PSLongContentPageState();
@@ -524,11 +571,18 @@ class PSLongContentPage extends StatefulWidget {
 
 class _PSLongContentPageState extends State<PSLongContentPage> {
   late final TextEditingController _controller = TextEditingController(text: widget.text);
+  late String? _error = widget.validate?.call(widget.text);
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _changed(String text) {
+    widget.onChanged!(text);
+    final validate = widget.validate;
+    if (validate != null) setState(() => _error = validate(text));
   }
 
   @override
@@ -557,23 +611,29 @@ class _PSLongContentPageState extends State<PSLongContentPage> {
         ]),
       );
     }
+    final error = _error;
     return PSScaffold(
       title: widget.title,
       body: Padding(
         padding: const .all(16),
-        child: TextField(
-          controller: _controller,
-          autofocus: true,
-          expands: true,
-          maxLines: null,
-          keyboardType: widget.keyboardType ?? TextInputType.multiline,
-          autocorrect: false,
-          enableSuggestions: false,
-          textAlignVertical: .top,
-          style: const TextStyle(fontFamily: 'monospace'),
-          decoration: InputDecoration(border: InputBorder.none, semanticCounterText: widget.title),
-          onChanged: onChanged,
-        ),
+        child: Column(crossAxisAlignment: .stretch, children: <Widget>[
+          if (error != null) Padding(padding: const .only(bottom: 8), child: PSFieldError(text: error)),
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              autofocus: true,
+              expands: true,
+              maxLines: null,
+              keyboardType: widget.keyboardType ?? TextInputType.multiline,
+              autocorrect: false,
+              enableSuggestions: false,
+              textAlignVertical: .top,
+              style: const TextStyle(fontFamily: 'monospace'),
+              decoration: InputDecoration(border: InputBorder.none, semanticCounterText: widget.title),
+              onChanged: _changed,
+            ),
+          ),
+        ]),
       ),
     );
   }

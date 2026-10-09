@@ -2,6 +2,13 @@
 
 A new Dartvel project.
 
+## Features from TunnlTo and the WireGuard apps
+
+On-demand rules applied by the app on Linux, zip and QR import, zip and single-profile export,
+"Exclude private IPs", inline WireGuard field checks, reusable rule groups (Settings > Rule groups)
+and search by server. What each does, where it runs and what is still planned:
+[docs/feature-port-tunnlto-wireguard.md](docs/feature-port-tunnlto-wireguard.md).
+
 ## Getting Started
 
 ### Prerequisites

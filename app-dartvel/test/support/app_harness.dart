@@ -9,7 +9,9 @@ import 'package:passepartout/dartvel_client/dartvel_client.dart';
 import 'package:passepartout/l10n/strings.g.dart';
 import 'package:passepartout/state/app_log.dart';
 import 'package:passepartout/state/app_state.dart';
+import 'package:passepartout/state/on_demand_store.dart';
 import 'package:passepartout/state/profile_draft.dart';
+import 'package:passepartout/state/rule_groups_store.dart';
 import 'package:passepartout/ui/kit.dart';
 
 void setUpApp() {
@@ -20,6 +22,8 @@ void setUpApp() {
   TunnelStore.init();
   PreferencesStore.init();
   DraftStore.init();
+  RuleGroupStore.init();
+  OnDemandStore.init();
 }
 
 /// [child] inside the app theme, as a screen.
