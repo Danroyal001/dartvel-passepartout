@@ -36,12 +36,19 @@
             "name": "WireGuard (Go)",
             "licenseName": "MIT",
             "licenseURL": "https://raw.githubusercontent.com/WireGuard/wireguard-go/refs/heads/master/LICENSE"
+        }, {
+            "name": "Passepartout",
+            "licenseName": "GPL-3.0",
+            "licenseURL": "https://raw.githubusercontent.com/partout-io/passepartout/master/LICENSE"
         }
     ],
     "notices": [
         {
             "name": "Circle Icons",
             "message": "The logo is taken from the awesome Circle Icons set by Nick Roach."
+        }, {
+            "name": "Passepartout",
+            "message": "Dartvel VPN is based on Passepartout by Davide De Rosa (keeshux), licensed under GPLv3. Original project: https://github.com/partout-io/passepartout"
         }, {
             "name": "OpenVPN",
             "message": "© Copyright 2024 OpenVPN | OpenVPN is a registered trademark of OpenVPN, Inc."

@@ -94,7 +94,7 @@ void main() {
       expect(labels[AppMenuIds.launchesOnLogin], tr(Strings.viewsPreferencesLaunchesOnLogin));
       expect(labels[AppMenuIds.keepsInMenu], tr(Strings.viewsPreferencesKeepsInMenu));
       expect(labels[AppMenuIds.about], tr(Strings.globalNounsAbout));
-      expect(labels[AppMenuIds.quit], 'Quit Passepartout');
+      expect(labels[AppMenuIds.quit], 'Quit Dartvel VPN');
     });
 
     test('no profiles: no profile section at all', () {

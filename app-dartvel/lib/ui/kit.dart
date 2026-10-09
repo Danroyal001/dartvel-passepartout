@@ -32,7 +32,7 @@ abstract final class PSColors {
   }
 }
 
-ThemeData passepartoutTheme(Brightness brightness) {
+ThemeData dartvelVpnTheme(Brightness brightness) {
   final dark = brightness == .dark;
   final scheme = ColorScheme.fromSeed(
     seedColor: PSColors.brand,
@@ -70,6 +70,8 @@ ThemeData passepartoutTheme(Brightness brightness) {
     listTileTheme: const ListTileThemeData(contentPadding: .symmetric(horizontal: 16), minVerticalPadding: 10),
   );
 }
+
+ThemeData passepartoutTheme(Brightness brightness) => dartvelVpnTheme(brightness);
 
 /// `Strings.x` resolved in the current locale, with `{0}`, `{1}` arguments.
 String tr(DVTranslationKey key, [List<Object> args = const <Object>[]]) => const DVI18n().t(

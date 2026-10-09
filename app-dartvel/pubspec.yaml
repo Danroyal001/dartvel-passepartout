@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0
 # Copyright 2026 SigmaDev
 name: passepartout
-description: Universal Passepartout VPN profile manager (phase 1)
+description: Universal Dartvel VPN profile manager (phase 1)
 publish_to: "none"
 version: 0.0.1
 
@@ -82,7 +82,21 @@ dartvel:
     durationMs: 200
     curve: easeInOut
 
+  pwa:
+    name: Dartvel VPN
+    shortName: Dartvel VPN
+
+  desktop:
+    name: Dartvel VPN
+
+  splash:
+    enabled: true
+    color: '#FFFFFF'
+    darkColor: '#121212'
+    image: assets/icon.png
+    progress: true
+
   seo:
-    siteName: Passepartout
+    siteName: Dartvel VPN
     defaultTitle: Profiles
     defaultDescription: A Dartvel application

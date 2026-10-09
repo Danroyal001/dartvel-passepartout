@@ -14,7 +14,7 @@ import '../../state/app_state.dart';
 import '../kit.dart';
 
 /// Upstream `appConfiguration.bundle.displayName`.
-const String appDisplayName = 'Passepartout';
+const String appDisplayName = 'Dartvel VPN';
 
 /// Upstream `bundle.versionString`. Dartvel has no API for the running
 /// app's version, so this follows pubspec.yaml by hand (see PROGRESS).

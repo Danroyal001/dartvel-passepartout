@@ -15,7 +15,7 @@ void main() {
   testWidgets('profile list: empty state, then a profile row with its status', (tester) async {
     DV.global<ProfilesState>(const ProfilesState(isReady: true));
     await tester.pumpWidget(appUnderTest(const ProfilesScreen()));
-    expect(find.text('Passepartout'), findsOneWidget);
+    expect(find.text('Dartvel VPN'), findsOneWidget);
     expect(find.text('No profiles'), findsOneWidget);
 
     DV.global<ProfilesState>(ProfilesState(isReady: true, profiles: <TunnelProfile>[TunnelProfile.empty('Office')]));

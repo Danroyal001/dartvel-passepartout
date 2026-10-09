@@ -2,7 +2,7 @@
 <!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN" "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
   <action id="io.partout.tunnel">
-    <description>Run the Passepartout VPN tunnel</description>
+    <description>Run the Dartvel VPN tunnel</description>
     <message>Authentication is required to start the VPN tunnel</message>
     <defaults>
       <allow_any>no</allow_any><allow_inactive>no</allow_inactive><allow_active>auth_admin</allow_active>

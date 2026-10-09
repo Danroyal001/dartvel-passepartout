@@ -15,7 +15,7 @@ import '../../dartvel_client/dartvel_client.dart';
 
 /// Upstream `Strings.Unlocalized`, kept literal as upstream does.
 abstract final class SettingsUnlocalized {
-  static const String appName = 'Passepartout';
+  static const String appName = 'Dartvel VPN';
   static const String authorName = 'Davide De Rosa (keeshux)';
   static const String changelog = 'CHANGELOG';
   static const String faq = 'FAQ';
@@ -54,11 +54,8 @@ abstract final class SettingsConstants {
   static const String faqUrl = '$homeUrl/faq';
   static const String privacyPolicyUrl = '$homeUrl/privacy';
 
-  /// Where Report issue mails go: upstream's own address, kept 1:1.
-  ///
-  /// TODO(owner): choose the address for this fork. This is upstream's issue
-  /// inbox; reports from this port land with upstream's author until changed.
-  static const String issuesEmail = 'issues@passepartoutvpn.app';
+  /// Where Report issue mails go: support address for Dartvel VPN.
+  static const String issuesEmail = 'info@sigmadev.digital';
 
   static String urlForIssue(int issue) => '$issuesUrl/$issue';
 
