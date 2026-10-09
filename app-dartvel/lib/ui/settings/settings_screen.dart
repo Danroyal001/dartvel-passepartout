@@ -21,6 +21,7 @@
 import 'package:flutter/material.dart';
 
 import '../../dartvel_client/dartvel_client.dart';
+import '../../l10n/app_strings.dart';
 import '../../l10n/strings.g.dart';
 import '../kit.dart';
 import 'settings_support.dart';
@@ -33,6 +34,12 @@ class const SettingsScreen({super.key, final bool? desktopLayout}) extends State
       title: tr(Strings.globalNounsPreferences),
       navigates: true,
       onTap: () => pushRoute(DVRoutes.settingspreferences),
+    );
+    // Dartvel VPN: reusable split-tunnel rules (not in upstream).
+    final ruleGroups = PSRow(
+      title: AppStrings.ruleGroups,
+      navigates: true,
+      onTap: () => pushRoute(DVRoutes.settingsrulegroups),
     );
     final version = PSRow(
       title: tr(Strings.globalNounsVersion),
@@ -61,7 +68,7 @@ class const SettingsScreen({super.key, final bool? desktopLayout}) extends State
     // newer release; this port has no version checker yet, so it is empty.
     final sections = desktop
         ? <Widget>[
-            PSSection(children: <Widget>[preferences]),
+            PSSection(children: <Widget>[preferences, ruleGroups]),
             PSSection(header: tr(Strings.globalNounsAbout), children: <Widget>[version, links, credits]),
             PSSection(header: tr(Strings.globalNounsTroubleshooting), children: <Widget>[faq, diagnostics]),
             Padding(
@@ -70,7 +77,7 @@ class const SettingsScreen({super.key, final bool? desktopLayout}) extends State
             ),
           ]
         : <Widget>[
-            PSSection(children: <Widget>[preferences, version]),
+            PSSection(children: <Widget>[preferences, ruleGroups, version]),
             PSSection(header: tr(Strings.globalNounsAbout), children: <Widget>[links, credits]),
             PSSection(header: tr(Strings.globalNounsTroubleshooting), children: const <Widget>[faq]),
             PSSection(children: <Widget>[diagnostics]),

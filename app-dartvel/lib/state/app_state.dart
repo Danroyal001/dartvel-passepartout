@@ -15,8 +15,11 @@ import 'dart:convert';
 import '../dartvel_client/dartvel_client.dart';
 import '../domain/profile.dart';
 import '../domain/tunnel_status.dart';
+import '../platform/network/domain_resolver.dart';
 import '../platform/vpn_service.dart';
 import 'app_log.dart';
+import 'on_demand_store.dart';
+import 'rule_groups_store.dart';
 
 export '../domain/tunnel_status.dart';
 
@@ -28,10 +31,16 @@ class const ProfilesState({
   final bool isReady = false,
   final String search = '',
 }) {
-  /// Sorted by name like upstream's `filteredHeaders`, filtered by [search].
+  /// Sorted by name like upstream's `filteredHeaders`, filtered by [search]:
+  /// every word must appear in the name, the module types or a server
+  /// address, so "wg fra" finds a WireGuard profile for a Frankfurt server.
   List<TunnelProfile> get filtered {
-    final query = search.trim().toLowerCase();
-    final list = profiles.where((p) => query.isEmpty || p.name.toLowerCase().contains(query)).toList()
+    final words = search.trim().toLowerCase().split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
+    final list = profiles.where((p) {
+      if (words.isEmpty) return true;
+      final haystack = p.searchText;
+      return words.every(haystack.contains);
+    }).toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return list;
   }
@@ -64,6 +73,7 @@ class const TunnelState({
   final int received = 0,
   final int sent = 0,
   final String? lastErrorCode,
+  final DateTime? connectedSince,
 }) {
   TunnelStatus statusOf(String profileId) => profileId == activeProfileId ? status : .disconnected;
   bool isActive(String profileId) => profileId == activeProfileId && status != .disconnected;
@@ -199,19 +209,35 @@ abstract final class TunnelStore {
   static void init() => DV.global<TunnelState>(const TunnelState());
 
   /// Connects [profile], disconnecting any other first (one active profile).
-  static Future<void> connect(TunnelProfile profile) async {
-    if (state.activeProfileId != null && state.activeProfileId != profile.id) await disconnect();
+  /// [automatic] is true when on-demand rules connect, not the person.
+  static Future<void> connect(TunnelProfile profile, {bool automatic = false}) async {
+    if (state.activeProfileId != null && state.activeProfileId != profile.id) await disconnect(automatic: automatic);
+    if (!automatic) await OnDemandStore.userConnected(profile);
     _set(TunnelState(activeProfileId: profile.id, status: .connecting));
     try {
-      await VpnService.instance.connect(profile, onStatus: _onStatus);
+      await VpnService.instance.connect(await withRuleGroups(profile), onStatus: _onStatus);
     } on Object catch (error) {
       _set(TunnelState(activeProfileId: profile.id, lastErrorCode: '$error'));
       rethrow;
     }
   }
 
-  static Future<void> disconnect() async {
+  /// The copy of [profile] the engine gets: its rule groups' rules merged in
+  /// as routes (domain/rule_groups.dart). The saved profile is not changed.
+  static Future<TunnelProfile> withRuleGroups(TunnelProfile profile) async {
+    final groups = RuleGroupStore.state.resolve(profile.ruleGroupIds);
+    if (groups.isEmpty) return profile;
+    final routes = await ruleRoutes(
+      groups,
+      resolve: DomainResolution.resolve,
+      onSkipped: (rule, reason) => AppLog.warning('Rule "$rule" skipped: $reason'),
+    );
+    return applyRuleRoutes(profile, routes);
+  }
+
+  static Future<void> disconnect({bool automatic = false}) async {
     final id = state.activeProfileId;
+    if (!automatic) await OnDemandStore.userDisconnected();
     if (id == null) return;
     _set(TunnelState(activeProfileId: id, status: .disconnecting));
     try {
@@ -225,18 +251,20 @@ abstract final class TunnelStore {
       state.isActive(profile.id) ? disconnect() : connect(profile);
 
   static Future<void> reconnect(TunnelProfile profile) async {
-    await disconnect();
+    await disconnect(automatic: true);
     await connect(profile);
   }
 
   static void _onStatus(TunnelEvent event) {
     final current = state;
+    final status = event.status ?? current.status;
     _set(TunnelState(
       activeProfileId: event.status == .disconnected && event.errorCode == null ? null : current.activeProfileId,
-      status: event.status ?? current.status,
+      status: status,
       received: event.received ?? current.received,
       sent: event.sent ?? current.sent,
       lastErrorCode: event.errorCode ?? current.lastErrorCode,
+      connectedSince: status == .connected ? (current.connectedSince ?? DateTime.now()) : null,
     ));
   }
 }
