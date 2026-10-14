@@ -5,6 +5,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:passepartout/platform/tunnel/helper_input.dart';
 import 'package:passepartout/platform/tunnel/linux_network.dart';
 import 'package:passepartout/platform/tunnel/linux_network_plan.dart';
 
@@ -24,15 +25,29 @@ Future<void> main(List<String> args) async {
     emit({'type': 'exit', 'code': 0});
     return;
   }
-  if (args.length != 1 || args.single.startsWith('-')) {
-    stderr.writeln('Usage: partout-tunnel PROFILE.json | --cleanup');
+  if (args.length != 1 || args.single != '--stdin') {
+    stderr.writeln('Usage: partout-tunnel --stdin | --cleanup');
     exitCode = 64;
     return;
   }
-  // Read before creating listeners so a missing profile cannot keep the
-  // isolate alive after startup failure.
+  // The profile (it holds the private key) is the first stdin line, never a
+  // file: this helper runs as root and must not read caller-chosen paths.
+  // Read before creating listeners so a bad profile cannot keep the isolate
+  // alive after startup failure.
+  final helperInput = HelperInput(stdin);
+  final Map<String, dynamic> profileSource;
   try {
-    final profileSource = (jsonDecode(await File(args.single).readAsString()) as Map).cast<String, dynamic>();
+    profileSource = (jsonDecode(await helperInput.profile.timeout(const Duration(seconds: 15))) as Map).cast<String, dynamic>();
+  } on HelperInputException catch (error) {
+    emit({'type': 'error', 'code': error.code});
+    exitCode = 1;
+    return;
+  } on TimeoutException {
+    emit({'type': 'error', 'code': 'profile_timeout'});
+    exitCode = 1;
+    return;
+  }
+  try {
     // Resolve endpoint host names once, so the engine and the routing rule
     // that keeps encrypted traffic out of the tunnel use the same address.
     final profile = await withResolvedEndpoints(profileSource, (host) async {
@@ -115,12 +130,9 @@ Future<void> main(List<String> args) async {
     final signals = <StreamSubscription<ProcessSignal>>[];
     signals.add(ProcessSignal.sigterm.watch().listen((_) => requestStop()));
     signals.add(ProcessSignal.sigint.watch().listen((_) => requestStop()));
-    final input = stdin
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((line) {
-          if (line.trim() == 'stop') requestStop();
-        }, onDone: requestStop);
+    final input = helperInput.commands.listen((line) {
+      if (line.trim() == 'stop') requestStop();
+    }, onDone: requestStop);
     // Routing rules and the kill switch go in before the engine starts, so
     // nothing leaks while it connects.
     var networkReady = false;
@@ -176,7 +188,8 @@ Future<void> main(List<String> args) async {
     emit({
       'type': 'error',
       'code': 'helper_failure',
-      'message': error.toString(),
+      // The type only: an exception text can quote the input.
+      'message': error.runtimeType.toString(),
     });
     exitCode = 1;
   }

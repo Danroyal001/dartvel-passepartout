@@ -74,7 +74,8 @@ run_case() { # name, extra excluded CIDRs...
   local name=$1; shift
   dart run tool/netns_test/make_profile.dart "$WORK/client.conf" "$WORK/$name.json" "$@" >/dev/null 2>&1
   # The helper stops when its stdin closes, so keep a writer open.
-  sleep 600 | sudo ip netns exec $CLI "$HELPER_DIR/partout-tunnel" "$WORK/$name.json" > "$WORK/$name.events" 2>"$WORK/$name.err" &
+  # The profile goes in on stdin (first line); the writer then stays open.
+  { cat "$WORK/$name.json"; echo; sleep 600; } | sudo ip netns exec $CLI "$HELPER_DIR/partout-tunnel" --stdin > "$WORK/$name.events" 2>"$WORK/$name.err" &
   HELPER_PID=$!
   for _ in $(seq 1 40); do grep -q '"status":"connected"' "$WORK/$name.events" && break; sleep 0.5; done
   echo "== $name: $(grep -o '"status":"[a-z]*"' "$WORK/$name.events" | tr '\n' ' ')"

@@ -28,7 +28,8 @@ Future<void> main(List<String> args) async {
     final profile = File('${temp.path}/profile.json');
     await profile.writeAsString(jsonEncode(envelope['payload']));
     await Process.run('/bin/chmod', ['600', profile.path]);
-    final process = await Process.start('$dir/partout-tunnel', [profile.path]);
+    final process = await Process.start('$dir/partout-tunnel', ['--stdin']);
+    process.stdin.writeln(await profile.readAsString());
     final output = process.stdout.transform(utf8.decoder).listen(stdout.write);
     final error = process.stderr.transform(utf8.decoder).listen(stderr.write);
     final timer = Timer(const Duration(seconds: 3), () {

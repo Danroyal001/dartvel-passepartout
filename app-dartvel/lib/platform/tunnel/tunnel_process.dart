@@ -27,17 +27,14 @@ class TunnelProcess {
       throw StateError('Tunnel already running');
     }
     _starting = true;
-    Directory? temp;
     final ready = Completer<void>();
     try {
-      temp = await Directory.systemTemp.createTemp('partout-');
-      await _chmod(temp.path, '700');
-      final file = File('${temp.path}/profile.json');
-      await file.writeAsString('');
-      await _chmod(file.path, '600');
-      await file.writeAsString(profile, flush: true);
-      final process = await Process.start(executable, [...prefix, file.path]);
+      // Profile on stdin (first line), never on disk or in argv.
+      final process = await Process.start(executable, [...prefix, '--stdin']);
       _process = process;
+      unawaited(process.stdin.done.catchError((Object _) {}));
+      process.stdin.writeln(profile.replaceAll('\n', ' '));
+      await process.stdin.flush();
       final outDone = process.stdout
           .transform(utf8.decoder)
           .transform(const LineSplitter())
@@ -80,9 +77,6 @@ class TunnelProcess {
       rethrow;
     } finally {
       _starting = false;
-      if (temp != null && await temp.exists()) {
-        await temp.delete(recursive: true);
-      }
     }
   }
 
@@ -103,12 +97,5 @@ class TunnelProcess {
         throw StateError('Helper did not stop; privileged cleanup required');
       }
     }
-  }
-}
-
-Future<void> _chmod(String path, String mode) async {
-  final result = await Process.run('/bin/chmod', [mode, path]);
-  if (result.exitCode != 0) {
-    throw FileSystemException('Cannot secure tunnel file', path);
   }
 }
