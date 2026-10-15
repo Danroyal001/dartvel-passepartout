@@ -36,3 +36,9 @@ Next: regenerate client, analyze and validate browser/build targets. Screens rem
 Tests: first native run 1 pass/4 failed due envelope; corrected rerun pending.
 Blockers: none new.
 Native import suite passed 5/5 after envelope fix. Generator refused sensitive model without a privacy subject; added DVSubject.self and indefinite retention. Server bound to loopback and app port 3187. No external access or deployment.
+
+
+## LEAD NOTE (owner, 14 Oct night) — binding
+- With Dartvel's strongly typed backend functions there must be NO JSON anywhere in application code: no toJson/fromJson, jsonEncode/jsonDecode, Map<String,dynamic> payloads (e.g. lib/vault/vault_remote.dart:108). Call the generated typed backend functions with typed params/returns.
+- Middleware is the `middleware:` field of the backend function annotation, never a separate annotation.
+- Follow ALL Dartvel conventions: DV.run() only in main, pages/index.dart + _guard, DVFunctionalWidget/DVClassWidget, DVBox/DVText, UpperCamelCase generated widgets, signals not Listenable*, Dart-only tooling, no private host tooling in public docs. Run `dartvel doctor --conventions` (codex is adding it in dv-conventions-framework) and fix every finding.
