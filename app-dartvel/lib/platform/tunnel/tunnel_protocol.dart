@@ -170,3 +170,34 @@ HelperEvent parseTunnelLine(String line) {
       throw const FormatException('Unknown event');
   }
 }
+
+/// Holds the engine's "connected" until the helper has configured the tun
+/// device (addresses, routes, DNS): until then nothing is routed through the
+/// tunnel, and the app must not say it is connected. Every other status
+/// passes straight through.
+class HelperStatusGate {
+  HelperStatusGate(this._emit);
+  final void Function(HelperEvent) _emit;
+  bool _deviceReady = false;
+  bool _held = false;
+
+  void engineStatus(TunnelStatus status) {
+    if (status == TunnelStatus.connected && !_deviceReady) {
+      _held = true;
+      return;
+    }
+    _held = false;
+    // A reconnection opens a new tun device, which needs configuring again.
+    if (status == TunnelStatus.connecting) _deviceReady = false;
+    _emit(HelperStatus(status));
+  }
+
+  /// The current tun device is configured.
+  void deviceConfigured() {
+    _deviceReady = true;
+    if (_held) {
+      _held = false;
+      _emit(const HelperStatus(TunnelStatus.connected));
+    }
+  }
+}

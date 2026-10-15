@@ -1,0 +1,29 @@
+# dart run tool/netns_test/run.dart  (2026-10-15T01:13Z, kernel 6.18.44-fc-v114, wireguard-go server, Flutter 3.47.7 / Dart 3.13.5)
+== plain
+PASS  connected
+PASS  tun device has the profile address
+PASS  ping through the tunnel
+PASS  server counted encrypted traffic
+PASS  helper reported data counts
+PASS  helper reported the network restored
+PASS  no tunnel rules left
+PASS  tun device removed
+== excluded route
+PASS  connected
+PASS  ping through the tunnel
+PASS  excluded address does not use the tunnel
+PASS  tunnel address uses the tunnel
+== kill switch and --cleanup
+PASS  outside traffic flows without the kill switch
+PASS  connected
+PASS  nftables table present
+PASS  ping through the tunnel
+PASS  outside traffic dropped
+PASS  killed helper did not restore
+PASS  kill switch still blocks after the helper died
+PASS  --cleanup reported the network restored
+PASS  nftables table removed
+PASS  no tunnel rules left
+PASS  outside traffic flows again
+PASS  host rules, routes and nftables tables unchanged
+ALL PASSED

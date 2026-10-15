@@ -43,4 +43,14 @@ void main() {
       expect(error.toString().contains('secret'), false);
     }
   });
+  test('cancelling the command stream releases stdin, so the helper can exit', () async {
+    var released = false;
+    final source = StreamController<List<int>>(onCancel: () => released = true);
+    final input = HelperInput(source.stream);
+    source.add(utf8.encode('{}\n'));
+    expect(await input.profile, '{}');
+    final commands = input.commands.listen((_) {});
+    await commands.cancel();
+    expect(released, true);
+  });
 }

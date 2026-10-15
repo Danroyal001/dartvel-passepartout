@@ -28,7 +28,9 @@ class HelperInput {
   final int maxProfileBytes;
   late final StreamSubscription<List<int>> _subscription;
   final _profile = Completer<String>();
-  final _commands = StreamController<String>();
+  // Cancelling the commands also releases stdin; otherwise the open stdin
+  // subscription keeps the helper alive after it has stopped.
+  late final _commands = StreamController<String>(onCancel: () => _subscription.cancel());
   final _head = BytesBuilder(copy: false);
   final _tail = BytesBuilder(copy: false);
   bool _profileDone = false;

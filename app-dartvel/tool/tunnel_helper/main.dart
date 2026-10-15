@@ -82,6 +82,8 @@ Future<void> main(List<String> args) async {
           int Function(Pointer<Char>, int)
         >('tunnel_device_name');
     final done = Completer<void>();
+    // "connected" waits until the tun device has its addresses and routes.
+    final gate = HelperStatusGate(emit);
     final listener = NativeCallable<EventNative>.listener((
       int kind,
       Pointer<Char> text,
@@ -97,7 +99,7 @@ Future<void> main(List<String> args) async {
       switch (kind) {
         case 0:
           final status = TunnelStatus.values.asNameMap()[value];
-          if (status != null) emit(HelperStatus(status));
+          if (status != null) gate.engineStatus(status);
         case 1:
           emit(HelperData(received: a, sent: b));
         case 2:
@@ -161,7 +163,7 @@ Future<void> main(List<String> args) async {
       final deviceTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
         if (stopping || deviceName(nameBuffer, 32) != 1) return;
         final name = nameBuffer.cast<Utf8>().toDartString();
-        configuring = configuring.then((_) => network.onDevice(name)).catchError((Object error) {
+        configuring = configuring.then((_) => network.onDevice(name)).then((_) => gate.deviceConfigured()).catchError((Object error) {
           emit(HelperError.fromFailure('network_setup', error));
           requestStop();
         });

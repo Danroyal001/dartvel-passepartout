@@ -18,6 +18,7 @@ String get dartExecutable {
 }
 
 void main() {
+  _gateTests();
   test('protocol reads typed events', () {
     expect(parseTunnelLine('{"type":"status","status":"connected"}'), const HelperStatus(TunnelStatus.connected));
     expect(parseTunnelLine('{"type":"data","received":42,"sent":7}'), const HelperData(received: 42, sent: 7));
@@ -177,3 +178,41 @@ Future<void> main() async {
 }
 
 String _quote(String value) => "'${value.replaceAll(r'\', r'\\').replaceAll("'", r"\'")}'";
+
+void _gateTests() {
+  group('status gate', () {
+    test('connected waits until the tun device is configured', () {
+      final out = <HelperEvent>[];
+      final gate = HelperStatusGate(out.add);
+      gate.engineStatus(TunnelStatus.connecting);
+      gate.engineStatus(TunnelStatus.connected);
+      expect(out, [const HelperStatus(TunnelStatus.connecting)]);
+      gate.deviceConfigured();
+      expect(out.last, const HelperStatus(TunnelStatus.connected));
+    });
+    test('a configured device lets connected through at once', () {
+      final out = <HelperEvent>[];
+      final gate = HelperStatusGate(out.add)..deviceConfigured();
+      gate.engineStatus(TunnelStatus.connected);
+      expect(out, [const HelperStatus(TunnelStatus.connected)]);
+    });
+    test('a reconnection waits for the new device', () {
+      final out = <HelperEvent>[];
+      final gate = HelperStatusGate(out.add)..deviceConfigured();
+      gate.engineStatus(TunnelStatus.connected);
+      gate.engineStatus(TunnelStatus.connecting);
+      gate.engineStatus(TunnelStatus.connected);
+      expect(out.last, const HelperStatus(TunnelStatus.connecting));
+      gate.deviceConfigured();
+      expect(out.last, const HelperStatus(TunnelStatus.connected));
+    });
+    test('a held connected is dropped when the engine moves on', () {
+      final out = <HelperEvent>[];
+      final gate = HelperStatusGate(out.add);
+      gate.engineStatus(TunnelStatus.connected);
+      gate.engineStatus(TunnelStatus.disconnecting);
+      gate.deviceConfigured();
+      expect(out, [const HelperStatus(TunnelStatus.disconnecting)]);
+    });
+  });
+}
