@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/dartvel_client/dartvel_client.dart';
 import 'package:passepartout/domain/profile.dart';
 import 'package:passepartout/l10n/strings.g.dart';
-import 'package:passepartout/main.dart';
+import 'package:passepartout/app.dart';
 import 'package:passepartout/platform/vpn_service.dart';
 import 'package:passepartout/platform/vpn_service_native.dart';
 import 'package:passepartout/state/app_state.dart';
