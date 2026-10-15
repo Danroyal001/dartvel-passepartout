@@ -43,7 +43,7 @@ final class OnDemandBuilder {
       : ssids = ssids ?? <ListItem<SsidEntry>>[],
         otherNetworks = otherNetworks ?? <String>[];
 
-  factory OnDemandBuilder.fromJson(Map<String, dynamic> value) => OnDemandBuilder(
+  factory OnDemandBuilder.fromModule(Map<String, dynamic> value) => OnDemandBuilder(
         policy: value['policy'] as String? ?? 'any',
         ssids: <ListItem<SsidEntry>>[
           for (final entry in ((value['withSSIDs'] as Map?) ?? const <String, dynamic>{}).entries)
@@ -118,7 +118,7 @@ final class OnDemandBuilder {
       };
 }
 
-final ModuleBuilderCache<OnDemandBuilder> onDemandBuilders = ModuleBuilderCache<OnDemandBuilder>(OnDemandBuilder.fromJson);
+final ModuleBuilderCache<OnDemandBuilder> onDemandBuilders = ModuleBuilderCache<OnDemandBuilder>(OnDemandBuilder.fromModule);
 
 /// Upstream's `policyFooterDescription`.
 String onDemandPolicyFooter(String policy) => tr(Strings.modulesOnDemandPolicyFooter, <Object>[
@@ -167,7 +167,7 @@ List<Widget> onDemandSections(BuildContext context, ModuleViewArgs args) {
           ),
         ],
       ),
-      EditableListSection<SsidEntry>(
+      editableListSection<SsidEntry>(
         key: const ValueKey<String>('onDemand/ssids'),
         header: 'Wi-Fi',
         addTitle: tr(Strings.modulesOnDemandSsidAdd),
@@ -175,25 +175,33 @@ List<Widget> onDemandSections(BuildContext context, ModuleViewArgs args) {
         emptyValue: () => (name: '', on: false),
         isEmptyValue: (value) => value.name.isEmpty,
         onChanged: (rows) => edit((b) => b.setSSIDs(rows)),
-        itemBuilder: (context, item, setValue) => Row(children: <Widget>[
-          Expanded(
-            child: ListItemTextField(
-              key: ValueKey<String>('onDemand/ssids/${item.id}'),
-              value: item.value.name,
-              placeholder: tr(Strings.placeholdersOnDemandSsid),
-              semanticLabel: 'Wi-Fi',
-              onChanged: (name) => setValue((name: name, on: item.value.on)),
+        itemBuilder: (context, item, setValue) => DVBox.row(
+          <Widget>[
+            Expanded(
+              child: ListItemTextField(
+                key: ValueKey<String>('onDemand/ssids/${item.id}'),
+                value: item.value.name,
+                placeholder: tr(Strings.placeholdersOnDemandSsid),
+                semanticLabel: 'Wi-Fi',
+                onChanged: (name) => setValue((name: name, on: item.value.on)),
+              ),
             ),
-          ),
-          Semantics(
-            label: item.value.name,
-            child: Switch.adaptive(
-              key: ValueKey<String>('onDemand/ssids/${item.id}/on'),
-              value: builder.withSSIDs[item.value.name] ?? false,
-              onChanged: (value) => edit((b) => b.setSSIDOn(item.value.name, value)),
+            Tooltip(
+              message: item.value.name.isEmpty ? 'Wi-Fi' : item.value.name,
+              excludeFromSemantics: true,
+              child: Semantics(
+                label: item.value.name.isEmpty ? 'Wi-Fi' : item.value.name,
+                child: Switch.adaptive(
+                  key: ValueKey<String>('onDemand/ssids/${item.id}/on'),
+                  value: builder.withSSIDs[item.value.name] ?? false,
+                  onChanged: (value) => edit((b) => b.setSSIDOn(item.value.name, value)),
+                ),
+              ),
             ),
-          ),
-        ]),
+          ],
+          spacing: 0,
+          crossAlign: .center,
+        ),
       ),
     ],
     if (CurrentNetwork.isSupported)
@@ -205,49 +213,38 @@ List<Widget> onDemandSections(BuildContext context, ModuleViewArgs args) {
   ];
 }
 
-/// "Add current Wi-Fi" and what the rules do on the network the device is on.
-class OnDemandCurrentNetworkSection extends StatefulWidget {
-  const OnDemandCurrentNetworkSection({super.key, required this.module, required this.showsAddWifi, required this.onAddWifi});
-
-  final Map<String, dynamic> module;
-  final bool showsAddWifi;
-  final ValueChanged<String> onAddWifi;
-
-  @override
-  State<OnDemandCurrentNetworkSection> createState() => _OnDemandCurrentNetworkSectionState();
-}
-
-class _OnDemandCurrentNetworkSectionState extends State<OnDemandCurrentNetworkSection> {
-  NetworkSnapshot? _network;
-
-  @override
-  void initState() {
-    super.initState();
+/// "Add current Wi-Fi" and what the rules do on the network the device is
+/// on. The network is probed once, when the section first shows.
+@DVFunctionalWidget()
+Widget _onDemandCurrentNetworkSection(
+  BuildContext context, {
+  required Map<String, dynamic> module,
+  required bool showsAddWifi,
+  required ValueChanged<String> onAddWifi,
+}) {
+  final DVSignal<NetworkSnapshot?> probed = context.signal<NetworkSnapshot?>(null);
+  runOnce(context, () {
     CurrentNetwork.probe().then((network) {
-      if (mounted) setState(() => _network = network);
+      if (context.mounted) probed.value = network;
     });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final network = _network;
-    final ssid = network?.kind == .wifi ? network?.ssid : null;
-    final decision = network == null ? null : evaluateOnDemand(widget.module, network);
-    final String? now = switch (decision) {
-      .connect => AppStrings.onDemandNow(network!.label, AppStrings.onDemandConnect),
-      .disconnect => AppStrings.onDemandNow(network!.label, AppStrings.onDemandDisconnect),
-      _ => null,
-    };
-    return PSSection(
-      footer: <String>[?now, AppStrings.onDemandArmedFooter].join('\n\n'),
-      children: <Widget>[
-        if (widget.showsAddWifi)
-          PSRow(
-            title: AppStrings.addCurrentWifi,
-            subtitle: ssid ?? AppStrings.noCurrentWifi,
-            onTap: ssid == null ? null : () => widget.onAddWifi(ssid),
-          ),
-      ],
-    );
-  }
+  });
+  final network = probed.value;
+  final ssid = network?.kind == .wifi ? network?.ssid : null;
+  final decision = network == null ? null : evaluateOnDemand(module, network);
+  final String? now = switch (decision) {
+    .connect => AppStrings.onDemandNow(network!.label, AppStrings.onDemandConnect),
+    .disconnect => AppStrings.onDemandNow(network!.label, AppStrings.onDemandDisconnect),
+    _ => null,
+  };
+  return PSSection(
+    footer: <String>[?now, AppStrings.onDemandArmedFooter].join('\n\n'),
+    children: <Widget>[
+      if (showsAddWifi)
+        PSRow(
+          title: AppStrings.addCurrentWifi,
+          subtitle: ssid ?? AppStrings.noCurrentWifi,
+          onTap: ssid == null ? null : () => onAddWifi(ssid),
+        ),
+    ],
+  );
 }
