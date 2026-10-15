@@ -17,181 +17,179 @@ import '../../state/app_state.dart';
 import '../../state/profile_draft.dart';
 import '../kit.dart';
 import 'profile_transfer.dart';
+import 'text_focus.dart';
 
 /// `isBigDevice`: iPad/Mac layout (toolbar group, grid available).
 bool isBigLayout(BuildContext context) => MediaQuery.sizeOf(context).width >= 700;
 
-class ProfilesScreen extends StatefulWidget {
-  const ProfilesScreen({super.key});
-
-  @override
-  State<ProfilesScreen> createState() => _ProfilesScreenState();
+/// Enter in the search field connects the first match, so a long list
+/// works as a quick switcher: Ctrl+K (Cmd+K), type, Enter.
+void connectFirstMatch(BuildContext context) {
+  final matches = ProfileStore.state.filtered;
+  if (matches.isEmpty) return;
+  final profile = matches.first;
+  if (TunnelStore.state.isActive(profile.id)) return;
+  runGuarded(context, () => TunnelStore.connect(profile), title: profile.name);
 }
 
-class _ProfilesScreenState extends State<ProfilesScreen> {
-  final TextEditingController _search = TextEditingController();
-  final FocusNode _searchFocus = FocusNode(debugLabel: 'profiles/search');
+@DVFunctionalWidget()
+Widget _profilesScreen(BuildContext context) {
+  final profiles = context.global<ProfilesState>();
+  final preferences = context.global<Preferences>();
+  final big = isBigLayout(context);
+  final layout = big ? preferences.layout : ProfilesLayout.list;
+  final searching = profiles.search.trim().isNotEmpty;
 
-  @override
-  void dispose() {
-    _search.dispose();
-    _searchFocus.dispose();
-    super.dispose();
+  final Widget body;
+  if (!profiles.isReady) {
+    body = Center(child: CircularProgressIndicator.adaptive(semanticsLabel: tr(Strings.globalNounsLoading)));
+  } else if (!profiles.hasProfiles) {
+    body = PSEmptyMessage(text: tr(Strings.viewsAppFoldersNoProfiles));
+  } else {
+    final header = preferences.pinsActiveProfile && !searching ? const InstalledProfileHeader() : null;
+    body = layout == .grid
+        ? ProfileGrid(header: header, profiles: profiles.filtered)
+        : ProfileList(header: header, profiles: profiles.filtered);
   }
 
-  /// Enter in the search field connects the first match, so a long list
-  /// works as a quick switcher: Ctrl+K (Cmd+K), type, Enter.
-  void _connectFirstMatch() {
-    final matches = ProfileStore.state.filtered;
-    if (matches.isEmpty) return;
-    final profile = matches.first;
-    if (TunnelStore.state.isActive(profile.id)) return;
-    runGuarded(context, () => TunnelStore.connect(profile), title: profile.name);
-  }
+  Widget settingsButton() => DVIconButton(
+        icon: Icons.settings_outlined,
+        label: tr(Strings.globalNounsSettings),
+        onPressed: () => DV.Navigation.push(DVRoutes.settings),
+      );
 
-  @override
-  Widget build(BuildContext context) {
-    final profiles = context.global<ProfilesState>();
-    final preferences = context.global<Preferences>();
-    final big = isBigLayout(context);
-    final layout = big ? preferences.layout : ProfilesLayout.list;
-    final searching = profiles.search.trim().isNotEmpty;
+  void focusSearch() => focusFirstTextField(context);
 
-    final Widget body;
-    if (!profiles.isReady) {
-      body = Center(child: CircularProgressIndicator.adaptive(semanticsLabel: tr(Strings.globalNounsLoading)));
-    } else if (!profiles.hasProfiles) {
-      body = PSEmptyMessage(text: tr(Strings.viewsAppFoldersNoProfiles));
-    } else {
-      final header = preferences.pinsActiveProfile && !searching ? const InstalledProfileHeader() : null;
-      body = layout == .grid
-          ? _ProfileGrid(header: header, profiles: profiles.filtered)
-          : _ProfileList(header: header, profiles: profiles.filtered);
-    }
-
-    return CallbackShortcuts(
-      bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _searchFocus.requestFocus,
-        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _searchFocus.requestFocus,
-      },
-      child: Scaffold(
+  return CallbackShortcuts(
+    bindings: <ShortcutActivator, VoidCallback>{
+      const SingleActivator(LogicalKeyboardKey.keyK, control: true): focusSearch,
+      const SingleActivator(LogicalKeyboardKey.keyK, meta: true): focusSearch,
+    },
+    child: Scaffold(
       appBar: AppBar(
-        leading: big ? null : const _SettingsButton(),
-        title: Semantics(headingLevel: 1, child: const Text('Dartvel VPN')),
+        leading: big ? null : settingsButton(),
+        title: DVText('Dartvel VPN', const DVModifier().semanticHeading(1)),
         actions: <Widget>[
-          if (profiles.hasProfiles)
-            _SearchField(controller: _search, focusNode: _searchFocus, onSubmitted: _connectFirstMatch),
+          if (profiles.hasProfiles) ProfileSearchField(onSubmitted: () => connectFirstMatch(context)),
           const AddProfileMenu(),
           if (big) ...<Widget>[
-            const _SettingsButton(),
-            _LayoutPicker(layout: preferences.layout),
+            settingsButton(),
+            ProfilesLayoutPicker(layout: preferences.layout),
           ],
           const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(top: false, child: body),
-      ),
+    ),
+  );
+}
+
+@DVFunctionalWidget()
+Widget _profilesLayoutPicker(BuildContext context, {required ProfilesLayout layout}) => SegmentedButton<ProfilesLayout>(
+      showSelectedIcon: false,
+      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+      segments: const <ButtonSegment<ProfilesLayout>>[
+        ButtonSegment<ProfilesLayout>(
+          value: .list,
+          tooltip: 'List',
+          icon: Icon(Icons.view_list_outlined, semanticLabel: 'List'),
+        ),
+        ButtonSegment<ProfilesLayout>(
+          value: .grid,
+          tooltip: 'Grid',
+          icon: Icon(Icons.grid_view_outlined, semanticLabel: 'Grid'),
+        ),
+      ],
+      selected: <ProfilesLayout>{layout},
+      onSelectionChanged: (selection) => PreferencesStore.update((p) => p.copyWith(layout: selection.first)),
     );
-  }
-}
-
-class const _SettingsButton() extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => IconButton(
-        tooltip: tr(Strings.globalNounsSettings),
-        icon: const Icon(Icons.settings_outlined),
-        onPressed: () => DV.Navigation.push(DVRoutes.settings),
-      );
-}
-
-class const _LayoutPicker({required final ProfilesLayout layout}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => SegmentedButton<ProfilesLayout>(
-        showSelectedIcon: false,
-        style: const ButtonStyle(visualDensity: VisualDensity.compact),
-        segments: const <ButtonSegment<ProfilesLayout>>[
-          ButtonSegment<ProfilesLayout>(value: .list, icon: Icon(Icons.view_list_outlined, semanticLabel: 'List')),
-          ButtonSegment<ProfilesLayout>(value: .grid, icon: Icon(Icons.grid_view_outlined, semanticLabel: 'Grid')),
-        ],
-        selected: <ProfilesLayout>{layout},
-        onSelectionChanged: (selection) => PreferencesStore.update((p) => p.copyWith(layout: selection.first)),
-      );
-}
 
 /// `.searchable(text:)`: filters profiles by name, module type and server.
-class const _SearchField({
-  required final TextEditingController controller,
-  required final FocusNode focusNode,
-  required final VoidCallback onSubmitted,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: isBigLayout(context) ? 220 : 140),
-        child: Padding(
-          padding: const .symmetric(vertical: 8),
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            onChanged: ProfileStore.search,
-            onSubmitted: (_) => onSubmitted(),
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: isBigLayout(context) ? AppStrings.searchHint : AppStrings.search,
-              semanticCounterText: AppStrings.searchHint,
-              prefixIcon: const Icon(Icons.search, size: 18),
-              filled: true,
-              border: OutlineInputBorder(borderRadius: .circular(10), borderSide: BorderSide.none),
-              contentPadding: const .symmetric(vertical: 8),
-            ),
-          ),
-        ),
-      );
+/// The query lives in [ProfilesState.search], so the field follows it.
+@DVFunctionalWidget()
+Widget _profileSearchField(BuildContext context, {required VoidCallback onSubmitted}) {
+  final theme = Theme.of(context);
+  final big = isBigLayout(context);
+  const InputBorder none = InputBorder.none;
+  // Upstream's search bar: a filled, borderless pill with a magnifier.
+  final field = Theme(
+    data: theme.copyWith(
+      inputDecorationTheme: const InputDecorationTheme(
+        isDense: true,
+        border: none,
+        enabledBorder: none,
+        focusedBorder: none,
+        contentPadding: .symmetric(vertical: 8),
+      ),
+    ),
+    child: DVText(
+      context.global<ProfilesState>().search,
+      const DVModifier().input(
+        hint: big ? AppStrings.searchHint : AppStrings.search,
+        onChanged: ProfileStore.search,
+        onSubmitted: onSubmitted,
+      ),
+    ),
+  );
+  return DVBox(
+    DVBox.row(
+      <Widget>[
+        Icon(Icons.search, size: 18, color: theme.colorScheme.onSurfaceVariant),
+        Expanded(child: field),
+      ],
+      spacing: 6,
+      crossAlign: .center,
+    ),
+    const DVModifier()
+        .backgroundColor(theme.colorScheme.surfaceContainerHighest)
+        .rounded(10)
+        .paddingSymmetric(horizontal: 10)
+        .marginOnly(top: 8, bottom: 8)
+        .maxWidth(big ? 220 : 140),
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Add profile
 
-class const AddProfileMenu() extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => MenuAnchor(
-        menuChildren: <Widget>[
-          MenuItemButton(
-            leadingIcon: const Icon(Icons.edit_outlined),
-            onPressed: () => newEmptyProfile(context),
-            child: Text(tr(Strings.viewsAppToolbarNewProfileEmpty)),
-          ),
-          MenuItemButton(
-            leadingIcon: const Icon(Icons.file_open_outlined),
-            onPressed: () => importProfileFile(context),
-            child: Text('${tr(Strings.viewsAppToolbarImportFile)}...'),
-          ),
-          MenuItemButton(
-            leadingIcon: const Icon(Icons.qr_code_scanner),
-            onPressed: () => importQrCode(context),
-            child: Text('${tr(Strings.viewsAppToolbarImportQrTitle)}...'),
-          ),
-          MenuItemButton(
-            leadingIcon: const Icon(Icons.text_snippet_outlined),
-            onPressed: () => DV.Navigation.push(DVRoutes.importtext),
-            child: Text('${tr(Strings.viewsAppToolbarImportTextTitle)}...'),
-          ),
-          if (ProfileStore.state.hasProfiles) ...<Widget>[
-            const Divider(height: 1),
-            MenuItemButton(
-              leadingIcon: const Icon(Icons.archive_outlined),
-              onPressed: () => exportAllProfiles(context),
-              child: const Text('${AppStrings.exportAll}...'),
-            ),
-          ],
-        ],
-        builder: (context, controller, _) => IconButton(
-          tooltip: tr(Strings.globalActionsAdd),
-          icon: const Icon(Icons.add),
-          onPressed: () => controller.isOpen ? controller.close() : controller.open(),
+@DVFunctionalWidget()
+Widget _addProfileMenu(BuildContext context) => MenuAnchor(
+      menuChildren: <Widget>[
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.edit_outlined),
+          onPressed: () => newEmptyProfile(context),
+          child: DVText(tr(Strings.viewsAppToolbarNewProfileEmpty)),
         ),
-      );
-}
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.file_open_outlined),
+          onPressed: () => importProfileFile(context),
+          child: DVText('${tr(Strings.viewsAppToolbarImportFile)}...'),
+        ),
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.qr_code_scanner),
+          onPressed: () => importQrCode(context),
+          child: DVText('${tr(Strings.viewsAppToolbarImportQrTitle)}...'),
+        ),
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.text_snippet_outlined),
+          onPressed: () => DV.Navigation.push(DVRoutes.importtext),
+          child: DVText('${tr(Strings.viewsAppToolbarImportTextTitle)}...'),
+        ),
+        if (ProfileStore.state.hasProfiles) ...<Widget>[
+          const Divider(height: 1),
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.archive_outlined),
+            onPressed: () => exportAllProfiles(context),
+            child: const DVText('${AppStrings.exportAll}...'),
+          ),
+        ],
+      ],
+      builder: (context, controller, _) => DVIconButton(
+        icon: Icons.add,
+        label: tr(Strings.globalActionsAdd),
+        onPressed: () => controller.isOpen ? controller.close() : controller.open(),
+      ),
+    );
 
 void newEmptyProfile(BuildContext context) {
   final profile = DraftStore.create(ProfileStore.state.firstUniqueName(tr(Strings.placeholdersProfileName)));
@@ -210,164 +208,183 @@ Future<void> importProfileFile(BuildContext context) => runGuarded(context, () a
 // Installed profile header
 
 /// `InstalledProfileView`: the active profile pinned on top, with its status and switch.
-class const InstalledProfileHeader({final bool grid = false}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final tunnel = context.global<TunnelState>();
-    final profiles = context.global<ProfilesState>();
-    final active = tunnel.activeProfileId == null ? null : profiles.byId(tunnel.activeProfileId!);
-    final theme = Theme.of(context);
-    final nameStyle = theme.textTheme.titleLarge?.copyWith(fontWeight: .w600);
-    return Card(
-      elevation: 0,
-      margin: const .fromLTRB(16, 8, 16, 8),
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: .circular(10)),
-      child: Padding(
-        padding: const .fromLTRB(16, 16, 12, 16),
-        child: Row(children: <Widget>[
-          Expanded(
-            child: Column(crossAxisAlignment: .start, children: <Widget>[
+@DVFunctionalWidget()
+Widget _installedProfileHeader(BuildContext context) {
+  final tunnel = context.global<TunnelState>();
+  final profiles = context.global<ProfilesState>();
+  final active = tunnel.activeProfileId == null ? null : profiles.byId(tunnel.activeProfileId!);
+  final theme = Theme.of(context);
+  // titleLarge, semibold.
+  final nameStyle = const DVModifier().fontSize(22).fontWeight(.w600);
+  return Card(
+    elevation: 0,
+    margin: const .fromLTRB(16, 8, 16, 8),
+    color: theme.colorScheme.surface,
+    shape: RoundedRectangleBorder(borderRadius: .circular(10)),
+    child: DVBox.row(
+      <Widget>[
+        Expanded(
+          child: DVBox.list(
+            <Widget>[
               if (active == null)
-                Text(tr(Strings.viewsAppInstalledProfileNoneName), style: nameStyle)
+                DVText(tr(Strings.viewsAppInstalledProfileNoneName), nameStyle)
               else
                 ProfileMenuButton(
                   profile: active,
                   installed: true,
-                  child: Row(mainAxisSize: .min, children: <Widget>[
-                    Flexible(child: Text(active.name, style: nameStyle)),
-                    const Icon(Icons.expand_more, size: 20),
-                  ]),
+                  child: DVBox.row(
+                    <Widget>[
+                      Flexible(child: DVText(active.name, nameStyle)),
+                      const Icon(Icons.expand_more, size: 20),
+                    ],
+                    spacing: 0,
+                    crossAlign: .center,
+                  ),
                 ),
               const SizedBox(height: 12),
               if (active == null)
-                Text(tr(Strings.viewsAppInstalledProfileNoneStatus),
-                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant))
+                DVText(tr(Strings.viewsAppInstalledProfileNoneStatus), const DVModifier().color(theme.colorScheme.onSurfaceVariant))
               else
                 ConnectionStatusText(profileId: active.id),
-            ]),
+            ],
+            spacing: 0,
+            crossAlign: .start,
           ),
-          if (active != null) TunnelToggle(profileId: active.id),
-        ]),
-      ),
-    );
-  }
+        ),
+        if (active != null) TunnelToggle(profileId: active.id),
+      ],
+      spacing: 0,
+      crossAlign: .center,
+      modifier: const DVModifier().paddingOnly(left: 16, top: 16, right: 12, bottom: 16),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
 // List and grid
 
-class const _ProfileList({final Widget? header, required final List<TunnelProfile> profiles}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => PSForm(children: <Widget>[
-        ?header,
-        PSSection(
-          header: tr(Strings.viewsAppFoldersDefault),
-          children: <Widget>[
-            for (final profile in profiles)
-              Dismissible(
-                key: ValueKey<String>(profile.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  color: PSColors.error,
-                  alignment: Alignment.centerRight,
-                  padding: const .only(right: 20),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                confirmDismiss: (_) => confirmDeleteProfile(context, profile),
-                child: ProfileRow(profile: profile),
-              ),
-          ],
-        ),
-      ]);
-}
+/// The red "delete" strip behind a row swiped to the left.
+@DVFunctionalWidget()
+Widget _swipeToDeleteBackground(BuildContext context) => DVBox(
+      const Icon(Icons.delete, color: Colors.white),
+      const DVModifier().backgroundColor(PSColors.error).align(Alignment.centerRight).paddingOnly(right: 20),
+    );
 
-class const _ProfileGrid({final Widget? header, required final List<TunnelProfile> profiles}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => ListView(
-        padding: const .all(8),
+@DVFunctionalWidget()
+Widget _profileList(BuildContext context, {Widget? header, required List<TunnelProfile> profiles}) => PSForm(children: <Widget>[
+      ?header,
+      PSSection(
+        header: tr(Strings.viewsAppFoldersDefault),
         children: <Widget>[
-          ?header,
-          Padding(
-            padding: const .fromLTRB(16, 8, 16, 0),
-            child: GridView.extent(
-              maxCrossAxisExtent: 300,
-              childAspectRatio: 2.4,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: <Widget>[for (final profile in profiles) _ProfileGridCell(profile: profile)],
+          for (final profile in profiles)
+            Dismissible(
+              key: ValueKey<String>(profile.id),
+              direction: DismissDirection.endToStart,
+              background: const SwipeToDeleteBackground(),
+              confirmDismiss: (_) => confirmDeleteProfile(context, profile),
+              child: ProfileRow(profile: profile),
             ),
-          ),
         ],
-      );
-}
+      ),
+    ]);
 
-class const _ProfileGridCell({required final TunnelProfile profile}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final active = context.global<TunnelState>().isActive(profile.id);
-    return ProfileMenuButton(
-      profile: profile,
-      asContextMenu: true,
-      child: Material(
-        color: active ? theme.colorScheme.surfaceContainerHighest : theme.colorScheme.surface,
-        borderRadius: .circular(10),
+@DVFunctionalWidget()
+Widget _profileGrid(BuildContext context, {Widget? header, required List<TunnelProfile> profiles}) => ListView(
+      padding: const .all(8),
+      children: <Widget>[
+        ?header,
+        Padding(
+          padding: const .fromLTRB(16, 8, 16, 0),
+          child: GridView.extent(
+            maxCrossAxisExtent: 300,
+            childAspectRatio: 2.4,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: <Widget>[for (final profile in profiles) ProfileGridCell(profile: profile)],
+          ),
+        ),
+      ],
+    );
+
+/// A grid cell toggles the connection on tap; its info button edits.
+@DVFunctionalWidget()
+Widget _profileGridCell(BuildContext context, {required TunnelProfile profile}) {
+  final theme = Theme.of(context);
+  final active = context.global<TunnelState>().isActive(profile.id);
+  return ProfileMenuButton(
+    profile: profile,
+    asContextMenu: true,
+    child: Material(
+      color: active ? theme.colorScheme.surfaceContainerHighest : theme.colorScheme.surface,
+      borderRadius: .circular(10),
+      child: Tooltip(
+        message: '${tr(active ? Strings.globalActionsDisconnect : Strings.globalActionsConnect)}: ${profile.name}',
+        excludeFromSemantics: true,
+        // Hover only: a long press opens the context menu.
+        triggerMode: TooltipTriggerMode.manual,
         child: InkWell(
           borderRadius: .circular(10),
           onTap: () => TunnelStore.toggle(profile).catchError((Object error) {
             if (context.mounted) showErrorAlert(context, title: profile.name, message: '$error');
           }),
-          child: Padding(
-            padding: const .all(14),
-            child: Row(children: <Widget>[
-              Expanded(child: _ProfileCard(profile: profile)),
-              IconButton(
-                tooltip: tr(Strings.globalActionsEdit),
-                icon: const Icon(Icons.info_outline),
+          child: DVBox.row(
+            <Widget>[
+              Expanded(child: ProfileCard(profile: profile)),
+              DVIconButton(
+                icon: Icons.info_outline,
+                label: tr(Strings.globalActionsEdit),
                 onPressed: () => editProfile(profile),
               ),
-            ]),
+            ],
+            spacing: 0,
+            crossAlign: .center,
+            modifier: const DVModifier().padding(14),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// `ProfileRowView`: card (tap to edit), then the connect switch.
+@DVFunctionalWidget()
+Widget _profileRow(BuildContext context, {required TunnelProfile profile}) => ProfileMenuButton(
+      profile: profile,
+      asContextMenu: true,
+      child: Tooltip(
+        message: '${tr(Strings.globalActionsEdit)}: ${profile.name}',
+        excludeFromSemantics: true,
+        // Hover only: a long press opens the context menu.
+        triggerMode: TooltipTriggerMode.manual,
+        child: InkWell(
+          onTap: () => editProfile(profile),
+          child: DVBox.row(
+            <Widget>[
+              Expanded(child: ProfileCard(profile: profile)),
+              TunnelToggle(profileId: profile.id),
+            ],
+            spacing: 0,
+            crossAlign: .center,
+            modifier: const DVModifier().paddingOnly(left: 16, top: 10, right: 12, bottom: 10),
           ),
         ),
       ),
     );
-  }
-}
-
-/// `ProfileRowView`: card (tap to edit), then the connect switch.
-class const ProfileRow({super.key, required final TunnelProfile profile}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => ProfileMenuButton(
-        profile: profile,
-        asContextMenu: true,
-        child: InkWell(
-          onTap: () => editProfile(profile),
-          child: Padding(
-            padding: const .fromLTRB(16, 10, 12, 10),
-            child: Row(children: <Widget>[
-              Expanded(child: _ProfileCard(profile: profile)),
-              TunnelToggle(profileId: profile.id),
-            ]),
-          ),
-        ),
-      );
-}
 
 /// `ProfileCardView`: name (headline) over its status (subheadline).
-class const _ProfileCard({required final TunnelProfile profile}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(crossAxisAlignment: .start, mainAxisSize: .min, children: <Widget>[
-      Text(profile.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-      const SizedBox(height: 2),
-      ConnectionStatusText(profileId: profile.id),
-    ]);
-  }
-}
+@DVFunctionalWidget()
+Widget _profileCard(BuildContext context, {required TunnelProfile profile}) => DVBox.list(
+      <Widget>[
+        // titleMedium, semibold.
+        DVText(profile.name, const DVModifier().fontSize(16).fontWeight(.w600)),
+        const SizedBox(height: 2),
+        ConnectionStatusText(profileId: profile.id),
+      ],
+      spacing: 0,
+      crossAlign: .start,
+    );
 
 void editProfile(TunnelProfile profile) {
   DraftStore.open(profile.id);
@@ -387,67 +404,67 @@ Future<bool> confirmDeleteProfile(BuildContext context, TunnelProfile profile) a
 
 /// `ProfileContextMenu`: Reconnect | Edit, then Hide (installed) or Duplicate, Delete.
 /// As a context menu it opens on right-click and long-press; otherwise on tap.
-class const ProfileMenuButton({
-  super.key,
-  required final TunnelProfile profile,
-  required final Widget child,
-  final bool installed = false,
-  final bool asContextMenu = false,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final controller = MenuController();
-    final items = <Widget>[
+@DVFunctionalWidget()
+Widget _profileMenuButton(
+  BuildContext context, {
+  required TunnelProfile profile,
+  required Widget child,
+  bool installed = false,
+  bool asContextMenu = false,
+}) {
+  final items = <Widget>[
+    MenuItemButton(
+      leadingIcon: const Icon(Icons.refresh),
+      onPressed: () => runGuarded(context, () => TunnelStore.reconnect(profile)),
+      child: DVText(tr(Strings.globalActionsReconnect)),
+    ),
+    const Divider(height: 1),
+    MenuItemButton(
+      leadingIcon: const Icon(Icons.edit_outlined),
+      onPressed: () => editProfile(profile),
+      child: DVText(tr(Strings.globalActionsEdit)),
+    ),
+    if (profile.activeConnection != null)
       MenuItemButton(
-        leadingIcon: const Icon(Icons.refresh),
-        onPressed: () => runGuarded(context, () => TunnelStore.reconnect(profile)),
-        child: Text(tr(Strings.globalActionsReconnect)),
+        leadingIcon: const Icon(Icons.ios_share),
+        onPressed: () => exportProfileFile(context, profile),
+        child: const DVText('${AppStrings.exportProfile}...'),
       ),
-      const Divider(height: 1),
+    if (installed)
       MenuItemButton(
-        leadingIcon: const Icon(Icons.edit_outlined),
-        onPressed: () => editProfile(profile),
-        child: Text(tr(Strings.globalActionsEdit)),
+        leadingIcon: const Icon(Icons.visibility_off_outlined),
+        onPressed: () => PreferencesStore.update((p) => p.copyWith(pinsActiveProfile: false)),
+        child: DVText(tr(Strings.globalActionsHide)),
       ),
-      if (profile.activeConnection != null)
-        MenuItemButton(
-          leadingIcon: const Icon(Icons.ios_share),
-          onPressed: () => exportProfileFile(context, profile),
-          child: const Text('${AppStrings.exportProfile}...'),
-        ),
-      if (installed)
-        MenuItemButton(
-          leadingIcon: const Icon(Icons.visibility_off_outlined),
-          onPressed: () => PreferencesStore.update((p) => p.copyWith(pinsActiveProfile: false)),
-          child: Text(tr(Strings.globalActionsHide)),
-        ),
-      if (!installed) ...<Widget>[
-        MenuItemButton(
-          leadingIcon: const Icon(Icons.copy_outlined),
-          onPressed: () => runGuarded(context, () => ProfileStore.duplicate(profile.id)),
-          child: Text(tr(Strings.globalActionsDuplicate)),
-        ),
-        MenuItemButton(
-          leadingIcon: const Icon(Icons.delete_outline, color: PSColors.error),
-          onPressed: () => confirmDeleteProfile(context, profile),
-          child: Text(tr(Strings.globalActionsRemove), style: const TextStyle(color: PSColors.error)),
-        ),
-      ],
-    ];
-    return MenuAnchor(
-      controller: controller,
-      menuChildren: items,
-      child: asContextMenu
-          ? GestureDetector(
-              onSecondaryTapDown: (details) => controller.open(position: details.localPosition),
-              onLongPressStart: (details) => controller.open(position: details.localPosition),
-              child: child,
-            )
-          : InkWell(
+    if (!installed) ...<Widget>[
+      MenuItemButton(
+        leadingIcon: const Icon(Icons.copy_outlined),
+        onPressed: () => runGuarded(context, () => ProfileStore.duplicate(profile.id)),
+        child: DVText(tr(Strings.globalActionsDuplicate)),
+      ),
+      MenuItemButton(
+        leadingIcon: const Icon(Icons.delete_outline, color: PSColors.error),
+        onPressed: () => confirmDeleteProfile(context, profile),
+        child: DVText(tr(Strings.globalActionsRemove), const DVModifier().color(PSColors.error)),
+      ),
+    ],
+  ];
+  return MenuAnchor(
+    menuChildren: items,
+    builder: (context, controller, _) => asContextMenu
+        ? GestureDetector(
+            onSecondaryTapDown: (details) => controller.open(position: details.localPosition),
+            onLongPressStart: (details) => controller.open(position: details.localPosition),
+            child: child,
+          )
+        : Tooltip(
+            message: profile.name,
+            excludeFromSemantics: true,
+            child: InkWell(
               borderRadius: .circular(6),
               onTap: () => controller.isOpen ? controller.close() : controller.open(),
               child: child,
             ),
-    );
-  }
+          ),
+  );
 }

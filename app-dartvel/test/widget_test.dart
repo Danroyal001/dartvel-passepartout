@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/dartvel_client/dartvel_client.dart';
 import 'package:passepartout/domain/profile.dart';
 import 'package:passepartout/state/app_state.dart';
-import 'package:passepartout/ui/screens/profiles_screen.dart';
 
 import 'support/app_harness.dart';
 
