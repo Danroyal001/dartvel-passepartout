@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 // Copyright 2026 SigmaDev
 
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/domain/profile.dart';
