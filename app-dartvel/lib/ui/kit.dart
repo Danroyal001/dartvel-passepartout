@@ -9,6 +9,8 @@
 // generates the public widget (`_pSRow` -> `PSRow`), which every page reaches
 // through the dartvel_client barrel.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -548,3 +550,33 @@ Widget _pSLongContentPage(
     ),
   );
 }
+
+// --- Lifecycle for functional widgets --------------------------------------
+// A functional widget has no initState or dispose (Dartvel has no hook for
+// them yet). These two cover what the app used them for. Call them on every
+// build, unconditionally and in the same order, like any context.signal.
+
+/// Runs [action] once for this widget, after its first build: what
+/// `initState` did. Later builds do nothing.
+void runOnce(BuildContext context, void Function() action) {
+  final DVSignal<bool> started = context.signal<bool>(false);
+  if (started.read()) return;
+  // Not read with .value: setting it must not rebuild anything.
+  started.value = true;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (context.mounted) action();
+  });
+}
+
+/// Calls [tick] every [period] while this widget is on screen; the timer
+/// stops itself once the widget is gone (what `dispose` did).
+void everyWhileMounted(BuildContext context, Duration period, void Function() tick) => runOnce(
+      context,
+      () => Timer.periodic(period, (timer) {
+        if (!context.mounted) {
+          timer.cancel();
+          return;
+        }
+        tick();
+      }),
+    );
