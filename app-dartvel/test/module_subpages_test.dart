@@ -18,9 +18,6 @@ import 'package:passepartout/platform/vpn_service_native.dart';
 import 'package:passepartout/state/app_state.dart';
 import 'package:passepartout/state/profile_draft.dart';
 import 'package:passepartout/ui/kit.dart';
-import 'package:passepartout/ui/modules/module_screen.dart';
-import 'package:passepartout/ui/modules/openvpn/openvpn_credentials_screen.dart';
-import 'package:passepartout/ui/modules/openvpn/openvpn_remotes_screen.dart';
 import 'package:passepartout/ui/modules/wireguard/wireguard_configuration.dart';
 import 'package:passepartout/ui/modules/wireguard/wireguard_import.dart';
 
