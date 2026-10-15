@@ -90,7 +90,7 @@ class _RuleGroupEditorScreenState extends State<RuleGroupEditorScreen> {
     final excluded = _excluded ??= stringItems(group.excluded);
 
     Widget rulesSection(String key, String header, String footer, List<ListItem<String>> rows, void Function(List<ListItem<String>>) assign) =>
-        EditableListSection<String>(
+        editableListSection<String>(
           key: ValueKey<String>('rule-group/$key'),
           header: header,
           footer: footer,
@@ -110,7 +110,6 @@ class _RuleGroupEditorScreenState extends State<RuleGroupEditorScreen> {
                 key: ValueKey<String>('rule-group/$key/${item.id}'),
                 value: item.value,
                 placeholder: AppStrings.rulePlaceholder,
-                keyboardType: TextInputType.url,
                 semanticLabel: header,
                 onChanged: setValue,
               ),

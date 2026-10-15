@@ -27,54 +27,35 @@ String? asNumberOfEntries(String text) {
 
 /// `ThemeCopiableText(publicKey, value: keyGenerator.publicKey(for: privateKey))`:
 /// the public key derived from [privateKey] by the engine; empty when invalid.
-class WireGuardPublicKeyRow extends StatefulWidget {
-  const WireGuardPublicKeyRow({super.key, required this.privateKey});
-
-  final String privateKey;
-
-  @override
-  State<WireGuardPublicKeyRow> createState() => _WireGuardPublicKeyRowState();
-}
-
-class _WireGuardPublicKeyRowState extends State<WireGuardPublicKeyRow> {
-  String _publicKey = '';
-  String? _derivedFrom;
-
-  @override
-  void initState() {
-    super.initState();
-    _derive();
-  }
-
-  @override
-  void didUpdateWidget(WireGuardPublicKeyRow oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.privateKey != widget.privateKey) _derive();
-  }
-
-  Future<void> _derive() async {
-    final privateKey = widget.privateKey;
-    _derivedFrom = privateKey;
-    var publicKey = '';
-    if (privateKey.isNotEmpty) {
-      try {
-        publicKey = await VpnService.instance.wireGuardPublicKey(privateKey);
-      } on Object {
-        publicKey = '';
+/// Derived again whenever [privateKey] changes; a late answer for a key that
+/// has since changed is dropped.
+@DVFunctionalWidget()
+Widget _wireGuardPublicKeyRow(BuildContext context, {required String privateKey}) {
+  final DVSignal<String> publicKey = context.signal<String>('');
+  // Which private key the shown (or pending) public key is for. Read without
+  // subscribing: it only decides whether to derive.
+  final DVSignal<String?> derivedFrom = context.signal<String?>(null);
+  if (derivedFrom.read() != privateKey) {
+    derivedFrom.value = privateKey;
+    // After this build: the result is set on the signal, never during build.
+    Future<void>.microtask(() async {
+      var derived = '';
+      if (privateKey.isNotEmpty) {
+        try {
+          derived = await VpnService.instance.wireGuardPublicKey(privateKey);
+        } on Object {
+          derived = '';
+        }
       }
-    }
-    if (!mounted || _derivedFrom != privateKey) return;
-    setState(() => _publicKey = publicKey);
+      if (context.mounted && derivedFrom.read() == privateKey) publicKey.value = derived;
+    });
   }
-
-  @override
-  Widget build(BuildContext context) => PSRow(
-        title: tr(Strings.globalNounsPublicKey),
-        subtitle: _publicKey.isEmpty ? null : _publicKey,
-        monospaced: true,
-        onTap: _publicKey.isEmpty ? null : () => copyToClipboard(context, _publicKey),
-        trailing: _publicKey.isEmpty
-            ? null
-            : Icon(Icons.copy, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
-      );
+  final shown = publicKey.value;
+  return PSRow(
+    title: tr(Strings.globalNounsPublicKey),
+    subtitle: shown.isEmpty ? null : shown,
+    monospaced: true,
+    onTap: shown.isEmpty ? null : () => copyToClipboard(context, shown),
+    trailing: shown.isEmpty ? null : Icon(Icons.copy, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+  );
 }

@@ -69,4 +69,11 @@ abstract final class AppStrings {
   static const String search = 'Search';
   static const String searchHint = 'Search name or server';
   static String connectedFor(String duration) => 'connected for $duration';
+
+  // modules
+  static const String paste = 'Paste';
+  static const String filePath = 'File path';
+  static const String loadFile = 'Load';
+  static const String openVPNConfigurationText = 'Configuration text (.ovpn)';
+  static String fileNotFound(String path) => 'File does not exist: $path';
 }
