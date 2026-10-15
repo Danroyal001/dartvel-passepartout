@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import '../../../domain/profile.dart';
 import '../../../l10n/strings.g.dart';
+import '../../../dartvel_client/dartvel_client.dart';
 import '../../kit.dart';
 import 'openvpn_formatters.dart';
 
@@ -85,7 +86,7 @@ class _OpenVPNCredentialsScreenState extends State<OpenVPNCredentialsScreen> {
                 onChanged: (val) => _updateCredentials(isInteractive: val),
               ),
               if (isInteractive)
-                PSPickerRow<String>(
+                pickerRow<String>(
                   title: 'OTP',
                   value: otpMethod,
                   options: const <String>['none', 'append', 'encode'],

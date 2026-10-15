@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/strings.g.dart';
+import '../../../dartvel_client/dartvel_client.dart';
 import '../../kit.dart';
 import 'module_builder_cache.dart';
 

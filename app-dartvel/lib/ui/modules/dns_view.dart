@@ -182,7 +182,7 @@ List<Widget> dnsSections(BuildContext context, ModuleViewArgs args) {
     PSSection(
       footer: tr(Strings.modulesDnsPolicyRouteThroughVpnFooter),
       children: <Widget>[
-        PSPickerRow<bool?>(
+        pickerRow<bool?>(
           title: tr(Strings.modulesDnsPolicyRouteThroughVpn),
           value: builder.routesThroughVPN,
           options: const <bool?>[null, true, false],
@@ -211,7 +211,7 @@ List<Widget> dnsSections(BuildContext context, ModuleViewArgs args) {
       PSSection(
         header: tr(Strings.modulesDnsCustomSettingsHeader),
         children: <Widget>[
-          PSPickerRow<String>(
+          pickerRow<String>(
             title: tr(Strings.globalNounsProtocol),
             value: builder.protocolType,
             options: dnsProtocols,
@@ -224,7 +224,6 @@ List<Widget> dnsSections(BuildContext context, ModuleViewArgs args) {
               label: 'URL',
               value: builder.dohURL,
               placeholder: 'https://1.2.3.4/some-query',
-              keyboardType: TextInputType.url,
               onChanged: (value) => edit((b) => b.dohURL = value),
             ),
           if (builder.protocolType == 'tls')
@@ -233,7 +232,6 @@ List<Widget> dnsSections(BuildContext context, ModuleViewArgs args) {
               label: tr(Strings.globalNounsHostname),
               value: builder.dotHostname,
               placeholder: 'dns-hostname.com',
-              keyboardType: TextInputType.url,
               onChanged: (value) => edit((b) => b.dotHostname = value),
             ),
         ],

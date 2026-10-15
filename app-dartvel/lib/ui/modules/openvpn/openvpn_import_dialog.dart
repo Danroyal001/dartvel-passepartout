@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../../domain/profile.dart';
 import '../../../l10n/strings.g.dart';
 import '../../../platform/vpn_service.dart';
+import '../../../dartvel_client/dartvel_client.dart';
 import '../../kit.dart';
 
 /// Shows an import dialog allowing the user to paste .ovpn configuration text

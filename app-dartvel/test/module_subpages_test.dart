@@ -109,7 +109,9 @@ void main() {
     for (final MapEntry(key: name, value: (title, text)) in wireGuardPages.entries) {
       DV.Navigation.navigate(section(wireGuard, name));
       await settle(tester);
-      expect(find.text(title), findsOneWidget, reason: name);
+      // The title heads the page and labels the editor.
+      expect(find.descendant(of: find.byType(AppBar), matching: find.text(title)), findsOneWidget, reason: name);
+      expect(find.widgetWithText(TextField, title), findsOneWidget, reason: name);
       expect(find.byType(PSLongContentPage), findsOneWidget, reason: name);
       expect(find.widgetWithText(TextField, text), findsOneWidget, reason: name);
       expect(find.byType(BackButton), findsOneWidget, reason: name);

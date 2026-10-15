@@ -8,6 +8,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/strings.g.dart';
+import '../../dartvel_client/dartvel_client.dart';
 import '../kit.dart';
 import 'common/addresses.dart';
 import 'common/module_builder_cache.dart';
@@ -167,7 +168,6 @@ List<Widget> ipSections(BuildContext context, ModuleViewArgs args) {
             label: tr(Strings.globalNounsAddress),
             value: builder.subnetText[family] ?? '',
             placeholder: family.destinationPlaceholder,
-            keyboardType: TextInputType.url,
             onChanged: (value) => edit((b) => b.setSubnet(family, value)),
           ),
         ],
@@ -183,7 +183,6 @@ List<Widget> ipSections(BuildContext context, ModuleViewArgs args) {
           label: 'MTU',
           value: builder.mtu,
           placeholder: '1500',
-          keyboardType: TextInputType.number,
           onChanged: (value) => edit((b) => b.mtu = value),
         ),
       ],
@@ -258,7 +257,6 @@ class _RouteDialogState extends State<RouteDialog> {
                 label: tr(Strings.globalNounsDestination),
                 value: _destination,
                 placeholder: widget.family.destinationPlaceholder,
-                keyboardType: TextInputType.url,
                 onChanged: (value) => setState(() => _destination = value),
               ),
               PSTextRow(
@@ -266,7 +264,6 @@ class _RouteDialogState extends State<RouteDialog> {
                 label: tr(Strings.globalNounsGateway),
                 value: _gateway,
                 placeholder: widget.family.addressPlaceholder,
-                keyboardType: TextInputType.url,
                 onChanged: (value) => setState(() => _gateway = value),
                 onSubmitted: (_) => _submit(),
               ),

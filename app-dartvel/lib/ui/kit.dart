@@ -4,11 +4,16 @@
 // The shared look: upstream's `themeForm()` grouped lists, rows, toggles and
 // status colours. Every screen builds from these so the app reads as one, and
 // so a screen ported by anyone matches the Apple layout row for row.
+//
+// Each widget here is a private `@DVFunctionalWidget` function; Dartvel
+// generates the public widget (`_pSRow` -> `PSRow`), which every page reaches
+// through the dartvel_client barrel.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../dartvel_client/dartvel_client.dart';
+import '../l10n/app_strings.dart';
 import '../l10n/strings.g.dart';
 import '../state/app_state.dart';
 
@@ -30,6 +35,9 @@ abstract final class PSColors {
       .disconnected => Theme.of(context).colorScheme.onSurfaceVariant,
     };
   }
+
+  /// Secondary text: values, footers, headers.
+  static Color secondary(BuildContext context) => Theme.of(context).colorScheme.onSurfaceVariant;
 }
 
 ThemeData dartvelVpnTheme(Brightness brightness) {
@@ -80,298 +88,252 @@ String tr(DVTranslationKey key, [List<Object> args = const <Object>[]]) => const
     );
 
 /// A grouped form page body: a centred, readable column of [PSSection]s.
-class const PSForm({super.key, required final List<Widget> children, final double maxWidth = 720}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => ListView(
-        padding: const .symmetric(vertical: 8),
-        children: <Widget>[
-          for (final child in children)
-            Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxWidth),
-                child: child,
-              ),
-            ),
-        ],
-      );
-}
+@DVFunctionalWidget()
+Widget _pSForm(BuildContext context, {required List<Widget> children, double maxWidth = 720}) => DVBox.scrollableList(
+      <Widget>[
+        for (final child in children) DVBox(child, DVModifier().maxWidth(maxWidth).centered()),
+      ],
+      modifier: DVModifier().paddingSymmetric(vertical: 8),
+      spacing: 0,
+    );
 
 /// An inset grouped section: optional header, rows on a rounded card, optional footer.
-class const PSSection({
-  super.key,
-  final String? header,
-  final String? footer,
-  required final List<Widget> children,
-  final Widget? headerTrailing,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final secondary = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    final rows = <Widget>[];
-    for (var i = 0; i < children.length; i++) {
-      if (i > 0) rows.add(const Padding(padding: .only(left: 16), child: Divider()));
-      rows.add(children[i]);
-    }
-    return Padding(
-      padding: const .fromLTRB(16, 8, 16, 12),
-      child: Column(
-        crossAxisAlignment: .stretch,
-        children: <Widget>[
-          if (header != null || headerTrailing != null)
-            Padding(
-              padding: const .fromLTRB(16, 8, 8, 6),
-              child: Row(children: <Widget>[
-                if (header != null)
-                  Expanded(
-                    child: Semantics(
-                      headingLevel: 2,
-                      child: Text(header!.toUpperCase(), style: secondary?.copyWith(letterSpacing: 0.3)),
-                    ),
-                  ),
-                ?headerTrailing,
-              ]),
-            ),
-          if (rows.isNotEmpty)
-            Material(
-              color: theme.colorScheme.surface,
-              borderRadius: .circular(10),
-              clipBehavior: .antiAlias,
-              child: Column(crossAxisAlignment: .stretch, children: rows),
-            ),
-          if (footer != null)
-            Padding(padding: const .fromLTRB(16, 6, 16, 0), child: Text(footer!, style: secondary)),
-        ],
-      ),
-    );
+@DVFunctionalWidget()
+Widget _pSSection(
+  BuildContext context, {
+  String? header,
+  String? footer,
+  required List<Widget> children,
+  Widget? headerTrailing,
+}) {
+  final theme = Theme.of(context);
+  final secondary = PSColors.secondary(context);
+  final rows = <Widget>[];
+  for (var i = 0; i < children.length; i++) {
+    if (i > 0) rows.add(DVBox(const Divider(), DVModifier().paddingOnly(left: 16)));
+    rows.add(children[i]);
   }
+  return DVBox.list(
+    <Widget>[
+      if (header != null || headerTrailing != null)
+        DVBox.row(
+          <Widget>[
+            if (header != null)
+              Expanded(
+                child: DVText(
+                  header.toUpperCase(),
+                  DVModifier().color(secondary).fontSize(12).letterSpacing(0.3).semanticHeading(2),
+                ),
+              ),
+            ?headerTrailing,
+          ],
+          modifier: DVModifier().paddingOnly(left: 16, top: 8, right: 8, bottom: 6),
+          align: .spaceBetween,
+          crossAlign: .center,
+        ),
+      if (rows.isNotEmpty)
+        Material(
+          color: theme.colorScheme.surface,
+          borderRadius: .circular(10),
+          clipBehavior: .antiAlias,
+          child: DVBox.list(rows, spacing: 0),
+        ),
+      if (footer != null)
+        DVText(footer, DVModifier().color(secondary).fontSize(12).paddingOnly(left: 16, top: 6, right: 16)),
+    ],
+    modifier: DVModifier().paddingOnly(left: 16, top: 8, right: 16, bottom: 12),
+    spacing: 0,
+  );
 }
 
 /// A row: title, optional subtitle/value, optional chevron when it navigates.
-class const PSRow({
-  super.key,
-  required final String title,
-  final String? subtitle,
-  final String? value,
-  final Widget? leading,
-  final Widget? trailing,
-  final VoidCallback? onTap,
-  final bool navigates = false,
-  final bool destructive = false,
-  final bool monospaced = false,
-  final bool selectable = false,
-  final bool error = false,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final titleColor = destructive ? PSColors.error : (onTap != null && !navigates && trailing == null && value == null)
-        ? theme.colorScheme.primary
-        : theme.colorScheme.onSurface;
-    final valueStyle = theme.textTheme.bodyMedium?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-      fontFamily: monospaced ? 'monospace' : null,
-    );
-    return ListTile(
-      leading: leading,
-      title: Text(title, style: TextStyle(color: titleColor)),
-      subtitle: subtitle == null
-          ? null
-          : error
-              ? PSFieldError(text: subtitle!)
-              : (selectable ? SelectableText(subtitle!, style: valueStyle) : Text(subtitle!, style: valueStyle)),
-      trailing: Row(mainAxisSize: .min, children: <Widget>[
-        if (value != null)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 260),
-            child: Text(value!, style: valueStyle, overflow: .ellipsis, textAlign: .end),
-          ),
+/// A row that does something on tap has a tooltip: its [tooltip], or its title.
+@DVFunctionalWidget()
+Widget _pSRow(
+  BuildContext context, {
+  required String title,
+  String? subtitle,
+  String? value,
+  Widget? leading,
+  Widget? trailing,
+  VoidCallback? onTap,
+  bool navigates = false,
+  bool destructive = false,
+  bool monospaced = false,
+  bool error = false,
+  String? tooltip,
+}) {
+  final theme = Theme.of(context);
+  final titleColor = destructive
+      ? PSColors.error
+      : (onTap != null && !navigates && trailing == null && value == null)
+          ? theme.colorScheme.primary
+          : theme.colorScheme.onSurface;
+  final valueStyle = monospaced
+      ? DVModifier().color(PSColors.secondary(context)).fontFamily('monospace')
+      : DVModifier().color(PSColors.secondary(context));
+  final tile = ListTile(
+    leading: leading,
+    title: DVText(title, DVModifier().color(titleColor)),
+    subtitle: subtitle == null ? null : (error ? PSFieldError(text: subtitle) : DVText(subtitle, valueStyle)),
+    trailing: DVBox.row(
+      <Widget>[
+        if (value != null) DVText(value, valueStyle.maxWidth(260).maxLines(1)),
         ?trailing,
-        if (navigates) Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
-      ]),
-      onTap: onTap,
-    );
-  }
+        if (navigates) Icon(Icons.chevron_right, color: PSColors.secondary(context).withValues(alpha: 0.6)),
+      ],
+      spacing: 4,
+      crossAlign: .center,
+    ),
+    onTap: onTap,
+  );
+  if (onTap == null) return tile;
+  return Tooltip(message: tooltip ?? title, excludeFromSemantics: true, child: tile);
 }
 
-/// A toggle row. The whole row toggles, as on iOS.
-class const PSToggleRow({
-  super.key,
-  required final String title,
-  final String? subtitle,
-  required final bool value,
-  required final ValueChanged<bool>? onChanged,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => SwitchListTile.adaptive(
-        title: Text(title),
-        subtitle: subtitle == null ? null : Text(subtitle!),
+/// A toggle row. The whole row toggles, as on iOS; the switch is named by the title.
+@DVFunctionalWidget()
+Widget _pSToggleRow(
+  BuildContext context, {
+  required String title,
+  String? subtitle,
+  required bool value,
+  required ValueChanged<bool>? onChanged,
+}) =>
+    Tooltip(
+      message: title,
+      excludeFromSemantics: true,
+      child: SwitchListTile.adaptive(
+        title: DVText(title),
+        subtitle: subtitle == null ? null : DVText(subtitle, DVModifier().color(PSColors.secondary(context))),
         value: value,
         onChanged: onChanged,
-      );
-}
-
-/// A labelled text field row (`ThemeTextField`): label left, field right.
-class PSTextRow extends StatefulWidget {
-  const PSTextRow({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.onChanged,
-    this.placeholder,
-    this.keyboardType,
-    this.monospaced = false,
-    this.obscure = false,
-    this.onSubmitted,
-    this.autofocus = false,
-    this.error,
-  });
-
-  final String label;
-  final String value;
-  final ValueChanged<String> onChanged;
-  final String? placeholder;
-  final TextInputType? keyboardType;
-  final bool monospaced;
-  final bool obscure;
-  final ValueChanged<String>? onSubmitted;
-  final bool autofocus;
-
-  /// Shown under the field in red while the text is invalid.
-  final String? error;
-
-  @override
-  State<PSTextRow> createState() => _PSTextRowState();
-}
-
-class _PSTextRowState extends State<PSTextRow> {
-  late final TextEditingController _controller = TextEditingController(text: widget.value);
-
-  @override
-  void didUpdateWidget(PSTextRow oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.value != _controller.text) _controller.text = widget.value;
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final row = Padding(
-      padding: const .symmetric(horizontal: 16, vertical: 4),
-      child: Row(children: <Widget>[
-        ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 96),
-          child: Text(widget.label, style: theme.textTheme.bodyLarge),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            autofocus: widget.autofocus,
-            textAlign: .end,
-            obscureText: widget.obscure,
-            keyboardType: widget.keyboardType,
-            style: TextStyle(fontFamily: widget.monospaced ? 'monospace' : null),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: widget.placeholder,
-              hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
-              semanticCounterText: widget.label,
-            ),
-            onChanged: widget.onChanged,
-            onSubmitted: widget.onSubmitted,
-          ),
-        ),
-      ]),
-    );
-    final error = widget.error;
-    if (error == null) return row;
-    return Column(crossAxisAlignment: .stretch, children: <Widget>[
-      row,
-      Padding(padding: const .fromLTRB(16, 0, 16, 8), child: PSFieldError(text: error)),
-    ]);
-  }
-}
-
-/// A picker row (`Picker` in a Form): title left, current choice right, menu on tap.
-class const PSPickerRow<T>({
-  super.key,
-  required final String title,
-  required final T value,
-  required final List<T> options,
-  required final String Function(T) label,
-  required final ValueChanged<T>? onChanged,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return MenuAnchor(
-      menuChildren: <Widget>[
-        for (final option in options)
-          MenuItemButton(
-            leadingIcon: Icon(option == value ? Icons.check : null, size: 18),
-            onPressed: onChanged == null ? null : () => onChanged!(option),
-            child: Text(label(option)),
-          ),
-      ],
-      builder: (context, controller, _) => ListTile(
-        title: Text(title),
-        trailing: Row(mainAxisSize: .min, children: <Widget>[
-          Text(label(value), style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
-          Icon(Icons.unfold_more, size: 18, color: theme.colorScheme.onSurfaceVariant),
-        ]),
-        onTap: onChanged == null ? null : () => controller.isOpen ? controller.close() : controller.open(),
       ),
     );
-  }
+
+/// A labelled text field row (`ThemeTextField`). The label names the field to
+/// screen readers and floats above it once there is text.
+@DVFunctionalWidget()
+Widget _pSTextRow(
+  BuildContext context, {
+  required String label,
+  required String value,
+  required ValueChanged<String> onChanged,
+  String? placeholder,
+  bool obscure = false,
+  ValueChanged<String>? onSubmitted,
+  String? error,
+}) =>
+    DVText(
+      value,
+      DVModifier()
+          .input(
+            label: label,
+            hint: placeholder,
+            obscureText: obscure,
+            error: error,
+            onChanged: onChanged,
+            onSubmitted: onSubmitted == null ? null : () => onSubmitted(value),
+          )
+          .paddingSymmetric(horizontal: 16, vertical: 4),
+    );
+
+/// A picker row (`Picker` in a Form): title left, current choice right, menu
+/// on tap. Picks by index into [labels]; [pickerRow] is the typed front.
+@DVFunctionalWidget()
+Widget _pSPickerRow(
+  BuildContext context, {
+  required String title,
+  required List<String> labels,
+  required int selected,
+  required ValueChanged<int>? onChanged,
+}) {
+  final secondary = PSColors.secondary(context);
+  final current = selected >= 0 && selected < labels.length ? labels[selected] : '';
+  return MenuAnchor(
+    menuChildren: <Widget>[
+      for (var i = 0; i < labels.length; i++)
+        MenuItemButton(
+          leadingIcon: Icon(i == selected ? Icons.check : null, size: 18),
+          onPressed: onChanged == null ? null : () => onChanged(i),
+          child: DVText(labels[i]),
+        ),
+    ],
+    builder: (context, controller, _) => Tooltip(
+      message: '$title: $current',
+      excludeFromSemantics: true,
+      child: ListTile(
+        title: DVText(title),
+        trailing: DVBox.row(
+          <Widget>[
+            DVText(current, DVModifier().color(secondary)),
+            Icon(Icons.unfold_more, size: 18, color: secondary),
+          ],
+          spacing: 4,
+          crossAlign: .center,
+        ),
+        onTap: onChanged == null ? null : () => controller.isOpen ? controller.close() : controller.open(),
+      ),
+    ),
+  );
 }
 
+/// [PSPickerRow] for any option type.
+Widget pickerRow<T>({
+  required String title,
+  required T value,
+  required List<T> options,
+  required String Function(T) label,
+  required ValueChanged<T>? onChanged,
+}) =>
+    PSPickerRow(
+      title: title,
+      labels: <String>[for (final option in options) label(option)],
+      selected: options.indexOf(value),
+      onChanged: onChanged == null ? null : (index) => onChanged(options[index]),
+    );
+
 /// The connect switch (`TunnelToggle`).
-class const TunnelToggle({super.key, required final String profileId, final String? semanticLabel}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final tunnel = context.global<TunnelState>();
-    final profile = context.global<ProfilesState>().byId(profileId);
-    final on = tunnel.statusOf(profileId) == .connected || tunnel.statusOf(profileId) == .connecting;
-    return Semantics(
-      label: semanticLabel ?? profile?.name,
+@DVFunctionalWidget()
+Widget _tunnelToggle(BuildContext context, {required String profileId, String? semanticLabel}) {
+  final tunnel = context.global<TunnelState>();
+  final profile = context.global<ProfilesState>().byId(profileId);
+  final on = tunnel.statusOf(profileId) == .connected || tunnel.statusOf(profileId) == .connecting;
+  final name = semanticLabel ?? profile?.name ?? '';
+  return Tooltip(
+    message: name,
+    excludeFromSemantics: true,
+    child: Semantics(
+      label: name,
       child: Switch.adaptive(
         value: on,
         onChanged: profile == null ? null : (_) => runGuarded(context, () => TunnelStore.toggle(profile)),
       ),
-    );
-  }
+    ),
+  );
 }
 
 /// "Active", "Activating"... with the on-demand suffix, coloured by status
 /// (`ConnectionStatusText`).
-class const ConnectionStatusText({super.key, required final String profileId, final TextStyle? style}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final tunnel = context.global<TunnelState>();
-    final status = tunnel.statusOf(profileId);
-    var text = switch (status) {
-      .connected => tr(Strings.entitiesTunnelStatusActive),
-      .connecting => tr(Strings.entitiesTunnelStatusActivating),
-      .disconnecting => tr(Strings.entitiesTunnelStatusDeactivating),
-      .disconnected => tr(Strings.entitiesTunnelStatusInactive),
-    };
-    if (tunnel.activeProfileId == profileId && tunnel.lastErrorCode != null) {
-      text = tunnel.lastErrorCode!;
-    } else if (status == .connected && (tunnel.received > 0 || tunnel.sent > 0)) {
-      text = '↓${formatBytes(tunnel.received)} ↑${formatBytes(tunnel.sent)}';
-      final since = tunnel.connectedSince;
-      // Updated with every transfer count the engine reports.
-      if (since != null) text = '$text · ${formatElapsed(DateTime.now().difference(since))}';
-    }
-    return Text(text, style: (style ?? const TextStyle()).copyWith(color: PSColors.status(context, tunnel, profileId)));
+@DVFunctionalWidget()
+Widget _connectionStatusText(BuildContext context, {required String profileId, DVModifier? modifier}) {
+  final tunnel = context.global<TunnelState>();
+  final status = tunnel.statusOf(profileId);
+  var text = switch (status) {
+    .connected => tr(Strings.entitiesTunnelStatusActive),
+    .connecting => tr(Strings.entitiesTunnelStatusActivating),
+    .disconnecting => tr(Strings.entitiesTunnelStatusDeactivating),
+    .disconnected => tr(Strings.entitiesTunnelStatusInactive),
+  };
+  if (tunnel.activeProfileId == profileId && tunnel.lastErrorCode != null) {
+    text = tunnel.lastErrorCode!;
+  } else if (status == .connected && (tunnel.received > 0 || tunnel.sent > 0)) {
+    text = '↓${formatBytes(tunnel.received)} ↑${formatBytes(tunnel.sent)}';
+    final since = tunnel.connectedSince;
+    // Updated with every transfer count the engine reports.
+    if (since != null) text = '$text · ${formatElapsed(DateTime.now().difference(since))}';
   }
+  return DVText(text, (modifier ?? DVModifier()).color(PSColors.status(context, tunnel, profileId)));
 }
 
 /// How long a tunnel has been up: `0:42`, `12:03`, `1:02:03`.
@@ -400,11 +362,12 @@ Future<void> runGuarded(BuildContext context, Future<void> Function() action, {S
     await action();
   } on Object catch (error) {
     if (!context.mounted) return;
-    await showErrorAlert(context, title: title ?? tr(Strings.globalNounsError), message: _describe(error));
+    await showErrorAlert(context, title: title ?? tr(Strings.globalNounsError), message: describeError(error));
   }
 }
 
-String _describe(Object error) => switch (error) {
+/// The message an error alert shows.
+String describeError(Object error) => switch (error) {
       UnsupportedError(:final message) => message ?? '$error',
       FormatException(:final message) => message,
       _ => '$error',
@@ -413,10 +376,10 @@ String _describe(Object error) => switch (error) {
 Future<void> showErrorAlert(BuildContext context, {required String title, required String message}) => showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
-        content: SelectableText(message),
+        title: DVText(title),
+        content: DVText(message),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr(Strings.globalNounsOk))),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: DVText(tr(Strings.globalNounsOk))),
         ],
       ),
     );
@@ -426,14 +389,14 @@ Future<bool> confirmDestructive(BuildContext context, {required String title, St
     await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
-        content: message == null ? null : Text(message),
+        title: DVText(title),
+        content: message == null ? null : DVText(message),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(tr(Strings.globalActionsCancel))),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: DVText(tr(Strings.globalActionsCancel))),
           TextButton(
             style: TextButton.styleFrom(foregroundColor: PSColors.error),
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(action),
+            child: DVText(action),
           ),
         ],
       ),
@@ -444,44 +407,38 @@ Future<bool> confirmDestructive(BuildContext context, {required String title, St
 Future<void> copyToClipboard(BuildContext context, String text) async {
   await Clipboard.setData(ClipboardData(text: text));
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: DVText(AppStrings.copied)));
   }
 }
 
 /// Empty-state message (`themeEmptyMessage`).
-class const PSEmptyMessage({super.key, required final String text}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const .all(32),
-          child: Text(
-            text,
-            textAlign: .center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-        ),
-      );
-}
+@DVFunctionalWidget()
+Widget _pSEmptyMessage(BuildContext context, {required String text}) => DVBox(
+      DVText(text, DVModifier().fontSize(24).color(PSColors.secondary(context))),
+      DVModifier().padding(32).centered(),
+    );
 
 /// A screen: app bar with [title] and [actions], back button when it can pop.
-class const PSScaffold({
-  super.key,
-  required final String title,
-  required final Widget body,
-  final List<Widget> actions = const <Widget>[],
-  final Widget? leading,
-  final bool largeTitle = false,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          leading: leading ?? PSBackTarget.fallbackButton(context),
-          title: Semantics(headingLevel: 1, child: Text(title, style: largeTitle ? Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: .bold) : null)),
-          actions: <Widget>[...actions, const SizedBox(width: 8)],
+@DVFunctionalWidget()
+Widget _pSScaffold(
+  BuildContext context, {
+  required String title,
+  required Widget body,
+  List<Widget> actions = const <Widget>[],
+  Widget? leading,
+  bool largeTitle = false,
+}) =>
+    Scaffold(
+      appBar: AppBar(
+        leading: leading ?? PSBackTarget.fallbackButton(context),
+        title: DVText(
+          title,
+          (largeTitle ? DVModifier().fontSize(24).fontWeight(.bold) : DVModifier()).semanticHeading(1),
         ),
-        body: SafeArea(top: false, child: body),
-      );
-}
+        actions: <Widget>[...actions, const SizedBox(width: 8)],
+      ),
+      body: SafeArea(top: false, child: body),
+    );
 
 /// Where "back" goes on a page opened by URL with nothing under it (a deep
 /// link or a reload): its parent page, e.g. a module's sub-page goes back to
@@ -505,40 +462,36 @@ class PSBackTarget extends InheritedWidget {
 
 /// `ThemeLongContentLink`: a row showing [title] and a one-line preview of
 /// [text] (or of [preview]'s result), opening the content's own page on tap.
-class const PSLongContentRow({
-  super.key,
-  required final String title,
-  required final String text,
-  required final VoidCallback onTap,
-  final String? Function(String text)? preview,
-  final String? error,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final shown = preview == null ? text : preview!(text);
-    return PSRow(
-      title: title,
-      subtitle: error,
-      error: error != null,
-      value: (shown == null || shown.isEmpty) ? null : _middleTruncated(shown),
-      monospaced: preview == null,
-      navigates: true,
-      onTap: onTap,
-    );
-  }
+@DVFunctionalWidget()
+Widget _pSLongContentRow(
+  BuildContext context, {
+  required String title,
+  required String text,
+  required VoidCallback onTap,
+  String? Function(String text)? preview,
+  String? error,
+}) {
+  final shown = preview == null ? text : preview(text);
+  return PSRow(
+    title: title,
+    subtitle: error,
+    error: error != null,
+    value: (shown == null || shown.isEmpty) ? null : middleTruncated(shown),
+    monospaced: preview == null,
+    navigates: true,
+    onTap: onTap,
+  );
 }
 
 /// An inline field error: red text, announced to screen readers as it changes.
-class const PSFieldError({super.key, required final String text}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Semantics(
-        liveRegion: true,
-        child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: PSColors.error)),
-      );
-}
+@DVFunctionalWidget()
+Widget _pSFieldError(BuildContext context, {required String text}) => Semantics(
+      liveRegion: true,
+      child: DVText(text, DVModifier().color(PSColors.error).fontSize(12)),
+    );
 
 /// Upstream truncates previews in the middle (`.truncationMode(.middle)`).
-String _middleTruncated(String text, {int maxLength = 24}) {
+String middleTruncated(String text, {int maxLength = 24}) {
   if (text.length <= maxLength) return text;
   final half = (maxLength - 1) ~/ 2;
   return '${text.substring(0, half)}…${text.substring(text.length - half)}';
@@ -546,104 +499,52 @@ String _middleTruncated(String text, {int maxLength = 24}) {
 
 /// `LongContentEditor` / long read-only content: a full page of monospaced
 /// text. Editable when [onChanged] is set (each keystroke reports it);
-/// otherwise selectable, with a copy action.
-class PSLongContentPage extends StatefulWidget {
-  const PSLongContentPage({
-    super.key,
-    required this.title,
-    required this.text,
-    this.onChanged,
-    this.keyboardType,
-    this.validate,
-  });
-
-  final String title;
-  final String text;
-  final ValueChanged<String>? onChanged;
-  final TextInputType? keyboardType;
-
-  /// The error to show under the editor for the current text, or null.
-  final String? Function(String text)? validate;
-
-  @override
-  State<PSLongContentPage> createState() => _PSLongContentPageState();
-}
-
-class _PSLongContentPageState extends State<PSLongContentPage> {
-  late final TextEditingController _controller = TextEditingController(text: widget.text);
-  late String? _error = widget.validate?.call(widget.text);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _changed(String text) {
-    widget.onChanged!(text);
-    final validate = widget.validate;
-    if (validate != null) setState(() => _error = validate(text));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final onChanged = widget.onChanged;
-    if (onChanged == null) {
-      return PSScaffold(
-        title: widget.title,
-        actions: <Widget>[
-          IconButton(
-            tooltip: 'Copy',
-            icon: const Icon(Icons.copy),
-            onPressed: () => copyToClipboard(context, widget.text),
-          ),
-        ],
-        body: PSForm(children: <Widget>[
-          PSSection(children: <Widget>[
-            Padding(
-              padding: const .all(16),
-              child: SelectableText(
-                widget.text,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace', height: 1.4),
-              ),
-            ),
-          ]),
-        ]),
-      );
-    }
-    final error = _error;
+/// otherwise selectable (pages are), with a copy action.
+@DVFunctionalWidget()
+Widget _pSLongContentPage(
+  BuildContext context, {
+  required String title,
+  required String text,
+  ValueChanged<String>? onChanged,
+  String? Function(String text)? validate,
+}) {
+  final DVSignal<String?> error = context.signal<String?>(validate?.call(text));
+  if (onChanged == null) {
     return PSScaffold(
-      title: widget.title,
-      body: Padding(
-        padding: const .all(16),
-        child: Column(crossAxisAlignment: .stretch, children: <Widget>[
-          if (error != null) Padding(padding: const .only(bottom: 8), child: PSFieldError(text: error)),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              autofocus: true,
-              expands: true,
-              maxLines: null,
-              keyboardType: widget.keyboardType ?? TextInputType.multiline,
-              autocorrect: false,
-              enableSuggestions: false,
-              textAlignVertical: .top,
-              style: const TextStyle(fontFamily: 'monospace'),
-              decoration: InputDecoration(border: InputBorder.none, semanticCounterText: widget.title),
-              onChanged: _changed,
-            ),
-          ),
+      title: title,
+      actions: <Widget>[
+        DVIconButton(
+          icon: Icons.copy,
+          label: AppStrings.copy,
+          onPressed: () => copyToClipboard(context, text),
+        ),
+      ],
+      body: PSForm(children: <Widget>[
+        PSSection(children: <Widget>[
+          DVText(text, DVModifier().fontFamily('monospace').lineHeight(1.4).padding(16)),
         ]),
-      ),
+      ]),
     );
   }
-}
-
-/// Placeholder body for a screen whose port is in progress. Says so plainly.
-class const PSNotPortedYet({super.key, required final String title}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => PSScaffold(
-        title: title,
-        body: const PSEmptyMessage(text: 'Not ported yet'),
-      );
+  final shown = error.value;
+  return PSScaffold(
+    title: title,
+    body: DVBox.scrollableList(
+      <Widget>[
+        if (shown != null) PSFieldError(text: shown),
+        DVText(
+          text,
+          DVModifier().input(
+            label: title,
+            multiline: true,
+            onChanged: (value) {
+              onChanged(value);
+              if (validate != null) error.value = validate(value);
+            },
+          ),
+        ),
+      ],
+      modifier: DVModifier().padding(16),
+    ),
+  );
 }

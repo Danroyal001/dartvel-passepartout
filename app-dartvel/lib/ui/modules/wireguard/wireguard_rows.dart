@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/strings.g.dart';
 import '../../../platform/vpn_service.dart';
+import '../../../dartvel_client/dartvel_client.dart';
 import '../../kit.dart';
 
 /// Upstream `Int.localizedEntries`: nil for 0, "1 entry", "{0} entries".
@@ -71,7 +72,6 @@ class _WireGuardPublicKeyRowState extends State<WireGuardPublicKeyRow> {
         title: tr(Strings.globalNounsPublicKey),
         subtitle: _publicKey.isEmpty ? null : _publicKey,
         monospaced: true,
-        selectable: true,
         onTap: _publicKey.isEmpty ? null : () => copyToClipboard(context, _publicKey),
         trailing: _publicKey.isEmpty
             ? null

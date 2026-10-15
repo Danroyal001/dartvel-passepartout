@@ -120,7 +120,6 @@ List<Widget> httpProxySections(BuildContext context, ModuleViewArgs args) {
             label: tr(Strings.globalNounsAddress),
             value: address,
             placeholder: AddressFamily.v4.addressPlaceholder,
-            keyboardType: TextInputType.url,
             onChanged: onAddress,
           ),
           PSTextRow(
@@ -128,7 +127,6 @@ List<Widget> httpProxySections(BuildContext context, ModuleViewArgs args) {
             label: tr(Strings.globalNounsPort),
             value: port,
             placeholder: '1080',
-            keyboardType: TextInputType.number,
             onChanged: onPort,
           ),
         ],
@@ -147,7 +145,6 @@ List<Widget> httpProxySections(BuildContext context, ModuleViewArgs args) {
           label: 'URL',
           value: builder.pacURLString,
           placeholder: 'http://proxy.com/pac.url',
-          keyboardType: TextInputType.url,
           onChanged: (value) => edit((b) => b.pacURLString = value),
         ),
       ],

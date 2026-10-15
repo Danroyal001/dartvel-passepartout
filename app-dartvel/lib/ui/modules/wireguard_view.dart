@@ -9,6 +9,7 @@ import '../../domain/ip_ranges.dart';
 import '../../l10n/app_strings.dart';
 import '../../l10n/strings.g.dart';
 import '../../platform/vpn_service.dart';
+import '../../dartvel_client/dartvel_client.dart';
 import '../kit.dart';
 import 'module_view.dart';
 import 'wireguard/wireguard_configuration.dart';
@@ -43,7 +44,6 @@ Widget? wireGuardSubpage(BuildContext context, ModuleViewArgs args, String secti
   return PSLongContentPage(
     title: field.title,
     text: field.text,
-    keyboardType: field.keyboardType,
     onChanged: field.onChanged,
     validate: check == null ? null : (text) => wireGuardFieldError(check, text),
   );
@@ -195,7 +195,6 @@ List<Widget> _configurationSections(BuildContext context, ModuleViewArgs args, W
         label: 'MTU',
         value: configuration.mtuText,
         placeholder: _mtuPlaceholder,
-        keyboardType: TextInputType.number,
         error: issues['mtu'] == null ? null : wireGuardIssueText(issues['mtu']!),
         onChanged: (text) => args.onChanged(_current(args).withMtu(text)),
       ),
@@ -254,7 +253,6 @@ Widget _peerSection(
           label: tr(Strings.globalNounsKeepAlive),
           value: peer.keepAliveText,
           placeholder: _keepAlivePlaceholder,
-          keyboardType: TextInputType.number,
           error: keepAliveIssue == null ? null : wireGuardIssueText(keepAliveIssue),
           onChanged: (text) {
             final current = _current(args);

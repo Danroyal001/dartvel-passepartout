@@ -19,6 +19,7 @@ import '../../domain/on_demand_rules.dart';
 import '../../l10n/app_strings.dart';
 import '../../l10n/strings.g.dart';
 import '../../platform/network/current_network.dart';
+import '../../dartvel_client/dartvel_client.dart';
 import '../kit.dart';
 import 'common/editable_list_section.dart';
 import 'common/module_builder_cache.dart';
@@ -140,7 +141,7 @@ List<Widget> onDemandSections(BuildContext context, ModuleViewArgs args) {
     PSSection(
       footer: onDemandPolicyFooter(builder.policy),
       children: <Widget>[
-        PSPickerRow<String>(
+        pickerRow<String>(
           title: tr(Strings.modulesOnDemandPolicy),
           value: builder.policy,
           options: onDemandPolicies,

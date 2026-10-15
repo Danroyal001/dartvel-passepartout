@@ -167,7 +167,6 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                   title: 'ID',
                   subtitle: current.id,
                   monospaced: true,
-                  selectable: true,
                   trailing: IconButton(
                     tooltip: 'Copy',
                     icon: const Icon(Icons.copy, size: 18),

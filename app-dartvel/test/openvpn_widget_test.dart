@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/domain/profile.dart';
 import 'package:passepartout/l10n/strings.g.dart';
 import 'package:passepartout/platform/vpn_service_native.dart';
+import 'package:passepartout/dartvel_client/dartvel_client.dart';
 import 'package:passepartout/ui/kit.dart';
 import 'package:passepartout/ui/modules/module_view.dart';
 import 'package:passepartout/ui/modules/openvpn/openvpn_content_screen.dart';

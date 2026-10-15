@@ -6,6 +6,17 @@
 // they move into a catalogue when the app gets its own translations.
 
 abstract final class AppStrings {
+  // Clipboard
+  static const String copy = 'Copy';
+  static const String copied = 'Copied';
+
+  // Diagnostics: undo what a killed tunnel helper left behind.
+  static const String restoreNetwork = 'Restore network';
+  static const String restoreNetworkFooter =
+      'Removes the routes, DNS settings and kill switch a tunnel that stopped unexpectedly may have left, '
+      'so traffic flows normally again. Asks for the administrator password.';
+  static const String networkRestored = 'Network restored.';
+
   // Import and export
   static const String importQrFromImage = 'Import QR code from image';
   static const String importQrNoConfig = 'This QR code does not hold a WireGuard or OpenVPN configuration.';

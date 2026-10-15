@@ -36,7 +36,7 @@ class const PreferencesScreen({super.key, final bool? desktopLayout}) extends St
       title: tr(Strings.globalNounsPreferences),
       body: PSForm(children: <Widget>[
         PSSection(children: <Widget>[
-          PSPickerRow<SystemAppearance>(
+          pickerRow<SystemAppearance>(
             title: tr(Strings.viewsPreferencesSystemAppearance),
             value: preferences.appearance,
             options: SystemAppearance.values,
