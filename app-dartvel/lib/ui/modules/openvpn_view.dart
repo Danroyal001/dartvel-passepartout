@@ -6,10 +6,8 @@ import '../../l10n/strings.g.dart';
 import '../../dartvel_client/dartvel_client.dart';
 import '../kit.dart';
 import 'module_view.dart';
-import 'openvpn/openvpn_credentials_screen.dart';
 import 'openvpn/openvpn_formatters.dart';
 import 'openvpn/openvpn_import_dialog.dart';
-import 'openvpn/openvpn_remotes_screen.dart';
 
 /// OpenVPN module sections.
 /// Matches upstream `OpenVPNView` and `OpenVPNView+Configuration.swift`.
