@@ -11,6 +11,7 @@ import '../domain/profile.dart';
 import 'generated/partout_bindings.dart';
 import 'vpn_service.dart';
 import 'tunnel/tunnel_process.dart';
+import 'tunnel/tunnel_protocol.dart';
 import 'tunnel/tunnel_logs.dart';
 
 VpnService createVpnService() => PartoutVpnService();
@@ -175,32 +176,24 @@ class PartoutVpnService implements VpnService {
     onStatus(const TunnelEvent(status: TunnelStatus.connecting));
     try {
       await tunnel.start(profile.encode(), (event) {
-        switch (event['type']) {
-          case 'status':
-            onStatus(
-              TunnelEvent(
-                status: TunnelStatus.values.byName(event['status'] as String),
-              ),
-            );
-          case 'data':
-            onStatus(
-              TunnelEvent(
-                received: event['received'] as int,
-                sent: event['sent'] as int,
-              ),
-            );
-          case 'error':
-            onStatus(TunnelEvent(errorCode: event['code'] as String));
-          case 'log':
-            _writeLog(event['message'] as String);
-          case 'terminated':
+        switch (event) {
+          case HelperStatus(:final status):
+            onStatus(TunnelEvent(status: status));
+          case HelperData(:final received, :final sent):
+            onStatus(TunnelEvent(received: received, sent: sent));
+          case HelperError(:final code):
+            onStatus(TunnelEvent(errorCode: code));
+          case HelperLog(:final message):
+            _writeLog(message);
+          case HelperTerminated(:final needsCleanup):
             if (identical(_tunnel, tunnel)) {
               _tunnel = null;
               _closeLog();
             }
-            // A helper that ended with an error or a signal may have left the
-            // kill switch behind: it fails closed and would block traffic.
-            if (event['code'] != 0) unawaited(restoreNetwork());
+            // The helper died before undoing its changes: the kill switch
+            // fails closed and would keep blocking traffic.
+            if (needsCleanup) unawaited(restoreNetwork());
+          case HelperReady() || HelperExit() || HelperNetworkRestored():
         }
       }, _writeLog);
     } catch (_) {
@@ -233,10 +226,10 @@ class PartoutVpnService implements VpnService {
   Future<void> restoreNetwork() async {
     if (!canConnect) return;
     final result = await Process.run(_pkexec!, [_helper, '--cleanup']);
-    _writeLog(
-      result.exitCode == 0
-          ? 'Network restored'
-          : 'Network restore failed (exit ${result.exitCode})',
-    );
+    if (result.exitCode != 0) {
+      _writeLog('Network restore failed (exit ${result.exitCode})');
+      throw StateError('Network restore failed (exit ${result.exitCode})');
+    }
+    _writeLog('Network restored');
   }
 }

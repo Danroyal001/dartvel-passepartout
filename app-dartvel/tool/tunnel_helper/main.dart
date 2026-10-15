@@ -8,6 +8,8 @@ import 'package:ffi/ffi.dart';
 import 'package:passepartout/platform/tunnel/helper_input.dart';
 import 'package:passepartout/platform/tunnel/linux_network.dart';
 import 'package:passepartout/platform/tunnel/linux_network_plan.dart';
+import 'package:passepartout/platform/tunnel/tunnel_protocol.dart';
+import 'package:passepartout/domain/tunnel_status.dart';
 
 typedef EventNative = Void Function(Int, Pointer<Char>, Uint64, Uint64);
 typedef StartNative = Int Function(
@@ -17,12 +19,17 @@ typedef StartNative = Int Function(
 );
 
 Future<void> main(List<String> args) async {
-  void emit(Map<String, Object?> event) => stdout.writeln(jsonEncode(event));
-  void log(String message) => emit({'type': 'log', 'level': 3, 'message': message});
+  void emit(HelperEvent event) => stdout.writeln(event.encode());
+  void log(String message) => emit(HelperLog(level: 3, message: message));
   if (args.length == 1 && args.single == '--cleanup') {
     // Undo what a killed helper left in this network namespace.
-    await LinuxNetworkController.cleanupStale(log: log);
-    emit({'type': 'exit', 'code': 0});
+    try {
+      await LinuxNetworkController.cleanupStale(log: log);
+      emit(const HelperNetworkRestored());
+    } catch (error) {
+      emit(HelperError.fromFailure('cleanup_failed', error));
+      exitCode = 1;
+    }
     return;
   }
   if (args.length != 1 || args.single != '--stdin') {
@@ -39,11 +46,11 @@ Future<void> main(List<String> args) async {
   try {
     profileSource = (jsonDecode(await helperInput.profile.timeout(const Duration(seconds: 15))) as Map).cast<String, dynamic>();
   } on HelperInputException catch (error) {
-    emit({'type': 'error', 'code': error.code});
+    emit(HelperError(error.code));
     exitCode = 1;
     return;
   } on TimeoutException {
-    emit({'type': 'error', 'code': 'profile_timeout'});
+    emit(const HelperError('profile_timeout'));
     exitCode = 1;
     return;
   }
@@ -89,15 +96,16 @@ Future<void> main(List<String> args) async {
       }
       switch (kind) {
         case 0:
-          emit({'type': 'status', 'status': value});
+          final status = TunnelStatus.values.asNameMap()[value];
+          if (status != null) emit(HelperStatus(status));
         case 1:
-          emit({'type': 'data', 'received': a, 'sent': b});
+          emit(HelperData(received: a, sent: b));
         case 2:
-          emit({'type': 'error', 'code': value});
+          emit(HelperError(value ?? 'engine_error'));
         case 3:
-          emit({'type': 'log', 'level': a, 'message': value});
+          emit(HelperLog(level: a, message: value ?? ''));
         case 4:
-          emit({'type': 'exit', 'code': a});
+          emit(HelperExit(a));
           exitCode = a == 0 ? 0 : 1;
           if (!done.isCompleted) done.complete();
       }
@@ -140,9 +148,10 @@ Future<void> main(List<String> args) async {
       await network.start();
       networkReady = true;
     } catch (error) {
-      emit({'type': 'error', 'code': 'network_setup', 'message': error.toString()});
+      emit(HelperError.fromFailure('network_setup', error));
       exitCode = 1;
       await network.stop();
+      emit(const HelperNetworkRestored());
     }
     if (networkReady) {
       // Configure each tun device the engine opens (it opens a new one after
@@ -153,7 +162,7 @@ Future<void> main(List<String> args) async {
         if (stopping || deviceName(nameBuffer, 32) != 1) return;
         final name = nameBuffer.cast<Utf8>().toDartString();
         configuring = configuring.then((_) => network.onDevice(name)).catchError((Object error) {
-          emit({'type': 'error', 'code': 'network_setup', 'message': error.toString()});
+          emit(HelperError.fromFailure('network_setup', error));
           requestStop();
         });
       });
@@ -161,10 +170,10 @@ Future<void> main(List<String> args) async {
       malloc.free(json);
       malloc.free(library);
       if (result != 0) {
-        emit({'type': 'error', 'code': 'helper_start_$result'});
+        emit(HelperError('helper_start_$result'));
         exitCode = 1;
       } else {
-        emit({'type': 'ready', 'pid': pid});
+        emit(HelperReady(pid));
         await done.future;
       }
       deviceTimer.cancel();
@@ -172,6 +181,7 @@ Future<void> main(List<String> args) async {
       malloc.free(nameBuffer);
       // The engine has exited and closed its tun device: undo the rest.
       await network.stop();
+      emit(const HelperNetworkRestored());
     } else {
       malloc.free(json);
       malloc.free(library);
@@ -185,12 +195,8 @@ Future<void> main(List<String> args) async {
     await Future<void>.delayed(const Duration(milliseconds: 100));
     listener.close();
   } catch (error) {
-    emit({
-      'type': 'error',
-      'code': 'helper_failure',
-      // The type only: an exception text can quote the input.
-      'message': error.runtimeType.toString(),
-    });
+    // The type only: an exception text can quote the input.
+    emit(HelperError.fromFailure('helper_failure', error));
     exitCode = 1;
   }
 }

@@ -23,33 +23,28 @@ Future<void> main(List<String> args) async {
   if (result == nullptr) throw StateError('Import failed');
   final envelope = jsonDecode(result.cast<Utf8>().toDartString()) as Map;
   malloc.free(result);
-  final temp = await Directory.systemTemp.createTemp('partout-probe-');
-  try {
-    final profile = File('${temp.path}/profile.json');
-    await profile.writeAsString(jsonEncode(envelope['payload']));
-    await Process.run('/bin/chmod', ['600', profile.path]);
-    final process = await Process.start('$dir/partout-tunnel', ['--stdin']);
-    process.stdin.writeln(await profile.readAsString());
-    final output = process.stdout.transform(utf8.decoder).listen(stdout.write);
-    final error = process.stderr.transform(utf8.decoder).listen(stderr.write);
-    final timer = Timer(const Duration(seconds: 3), () {
-      if (args.contains('--sigterm')) {
-        Process.killPid(process.pid, ProcessSignal.sigterm);
-      } else {
-        process.stdin.writeln('stop');
-      }
-    });
-    await process.exitCode.timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        Process.killPid(process.pid, ProcessSignal.sigterm);
-        return 124;
-      },
-    );
-    timer.cancel();
-    await output.cancel();
-    await error.cancel();
-  } finally {
-    await temp.delete(recursive: true);
-  }
+  // Straight to the helper's stdin: the profile holds a private key and is
+  // never written to disk.
+  final profile = jsonEncode(envelope['payload']);
+  final process = await Process.start('$dir/partout-tunnel', ['--stdin']);
+  process.stdin.writeln(profile);
+  final output = process.stdout.transform(utf8.decoder).listen(stdout.write);
+  final error = process.stderr.transform(utf8.decoder).listen(stderr.write);
+  final timer = Timer(const Duration(seconds: 3), () {
+    if (args.contains('--sigterm')) {
+      Process.killPid(process.pid, ProcessSignal.sigterm);
+    } else {
+      process.stdin.writeln('stop');
+    }
+  });
+  await process.exitCode.timeout(
+    const Duration(seconds: 10),
+    onTimeout: () {
+      Process.killPid(process.pid, ProcessSignal.sigterm);
+      return 124;
+    },
+  );
+  timer.cancel();
+  await output.cancel();
+  await error.cancel();
 }
