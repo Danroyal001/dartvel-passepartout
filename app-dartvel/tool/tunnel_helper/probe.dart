@@ -10,7 +10,7 @@ import 'package:ffi/ffi.dart';
 import 'package:passepartout/platform/generated/partout_bindings.dart';
 
 Future<void> main(List<String> args) async {
-  final dir = args.isEmpty ? '/tmp/pp-tunnel-build' : args.first;
+  final dir = args.isEmpty ? 'build/tunnel-helper' : args.first;
   final abi = PartoutBindings(DynamicLibrary.open('$dir/libpartout.so'));
   abi.partout_init(nullptr);
   final input = (await File('test/fixtures/sample.conf').readAsString())
