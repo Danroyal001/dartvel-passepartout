@@ -13,7 +13,6 @@ import '../../dartvel_client/dartvel_client.dart';
 import '../kit.dart';
 import 'module_view.dart';
 import 'wireguard/wireguard_configuration.dart';
-import 'wireguard/wireguard_import.dart';
 import 'wireguard/wireguard_issues.dart';
 import 'wireguard/wireguard_rows.dart';
 
@@ -56,7 +55,6 @@ class const _WireGuardField({
   required final String text,
   required final ValueChanged<String> onChanged,
   final String? Function(String text)? preview,
-  final TextInputType? keyboardType,
   final WireGuardIssue? Function(String text)? check,
 }) {
   /// The field [section] names in [args]' module, or null when there is none.
@@ -108,7 +106,6 @@ List<_WireGuardField> _interfaceFields(ModuleViewArgs args, WireGuardConfigurati
         text: configuration.addressesText,
         preview: asNumberOfEntries,
         check: WireGuardValidation.addresses,
-        keyboardType: TextInputType.url,
         onChanged: (text) => args.onChanged(_current(args).withAddresses(text)),
       ),
       _WireGuardField(
@@ -117,7 +114,6 @@ List<_WireGuardField> _interfaceFields(ModuleViewArgs args, WireGuardConfigurati
         text: configuration.dnsServersText,
         preview: asNumberOfEntries,
         check: WireGuardValidation.dnsServers,
-        keyboardType: TextInputType.url,
         onChanged: (text) => args.onChanged(_current(args).withDnsServers(text)),
       ),
       _WireGuardField(
@@ -165,7 +161,6 @@ List<_WireGuardField> _peerFields(ModuleViewArgs args, WireGuardPeer peer, int i
       text: peer.allowedIPsText,
       preview: asNumberOfEntries,
       check: WireGuardValidation.allowedIPs,
-      keyboardType: TextInputType.url,
       onChanged: (text) => edit((peer) => peer.withAllowedIPs(text)),
     ),
   ];
