@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/dartvel_client/dartvel_client.dart';
+import 'package:passepartout/l10n/app_strings.dart';
 import 'package:passepartout/l10n/strings.g.dart';
 import 'package:passepartout/platform/vpn_service.dart';
 import 'package:passepartout/platform/vpn_service_stub.dart';
@@ -49,6 +50,30 @@ class MemoryTunnelLogs {
         readFile: (path) async => files[path] ?? (throw ArgumentError('Not a tunnel log')),
         deleteFiles: (paths) async => paths.forEach(files.remove),
       );
+}
+
+/// A VpnService that only answers what Diagnostics asks: whether this target
+/// connects, and "restore network" (counted; throwing [error] when given).
+class FakeRestoreVpn implements VpnService {
+  FakeRestoreVpn({this.canConnect = true, this.error});
+
+  @override
+  final bool canConnect;
+
+  final Object? error;
+  int restores = 0;
+
+  @override
+  String? get connectUnavailableReason => canConnect ? null : 'No tunnel on this target';
+
+  @override
+  Future<void> restoreNetwork() async {
+    restores++;
+    if (error != null) throw error!;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError('not used by Diagnostics');
 }
 
 void main() {
@@ -162,6 +187,8 @@ void main() {
   });
 
   group('DiagnosticsScreen', () {
+    setUp(() => VpnService.instance = FakeRestoreVpn(canConnect: false));
+
     testWidgets('shows upstream sections and logging toggles', (tester) async {
       await pumpScreen(tester, DiagnosticsScreen(tunnelLogs: MemoryTunnelLogs().access));
       for (final key in <DVTranslationKey>[
@@ -215,6 +242,46 @@ void main() {
       expect(url.path, SettingsConstants.issuesEmail);
       expect(url.queryParameters['subject'], 'Dartvel VPN/Dartvel - Report issue');
       expect(url.queryParameters['body'], contains('Hi,\n\nIt drops\n\n--\n\nApp: Dartvel VPN 0.0.1'));
+    });
+  });
+
+  group('Diagnostics restore network', () {
+    testWidgets('is hidden where this target cannot connect', (tester) async {
+      final vpn = FakeRestoreVpn(canConnect: false);
+      VpnService.instance = vpn;
+      await pumpScreen(tester, DiagnosticsScreen(tunnelLogs: MemoryTunnelLogs().access));
+      await tester.scrollUntilVisible(find.text(tr(Strings.viewsDiagnosticsReportIssueTitle)), 200);
+      expect(find.text(AppStrings.restoreNetwork), findsNothing);
+      expect(find.text(AppStrings.restoreNetworkFooter), findsNothing);
+      expect(vpn.restores, 0);
+    });
+
+    testWidgets('restores once and confirms with a snack bar', (tester) async {
+      final vpn = FakeRestoreVpn();
+      VpnService.instance = vpn;
+      await pumpScreen(tester, DiagnosticsScreen(tunnelLogs: MemoryTunnelLogs().access));
+      await tester.scrollUntilVisible(find.text(AppStrings.restoreNetworkFooter), 200);
+      expect(find.text(AppStrings.restoreNetwork), findsOneWidget);
+      expect(find.byTooltip(AppStrings.restoreNetwork), findsOneWidget);
+      await tester.tap(find.text(AppStrings.restoreNetwork));
+      await tester.pumpAndSettle();
+      expect(vpn.restores, 1);
+      expect(find.text(AppStrings.networkRestored), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+    });
+
+    testWidgets('a failure shows the error alert, not the snack bar', (tester) async {
+      final vpn = FakeRestoreVpn(error: StateError('the helper was not authorized'));
+      VpnService.instance = vpn;
+      await pumpScreen(tester, DiagnosticsScreen(tunnelLogs: MemoryTunnelLogs().access));
+      await tester.scrollUntilVisible(find.text(AppStrings.restoreNetwork), 200);
+      await tester.tap(find.text(AppStrings.restoreNetwork));
+      await tester.pumpAndSettle();
+      expect(vpn.restores, 1);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text(tr(Strings.globalNounsError)), findsOneWidget);
+      expect(find.textContaining('the helper was not authorized'), findsOneWidget);
+      expect(find.text(AppStrings.networkRestored), findsNothing);
     });
   });
 

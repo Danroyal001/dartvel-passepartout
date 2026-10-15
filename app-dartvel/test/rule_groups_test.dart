@@ -3,12 +3,17 @@
 
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/dartvel_client/dartvel_client.dart';
 import 'package:passepartout/domain/profile.dart';
+import 'package:passepartout/l10n/app_strings.dart';
+import 'package:passepartout/l10n/strings.g.dart';
 import 'package:passepartout/platform/network/domain_resolver.dart';
 import 'package:passepartout/state/app_state.dart';
 import 'package:passepartout/state/rule_groups_store.dart';
+import 'package:passepartout/ui/kit.dart';
+import 'package:passepartout/ui/settings/rule_groups_screen.dart';
 
 import 'support/app_harness.dart';
 
@@ -138,6 +143,64 @@ void main() {
       expect(RuleGroupStore.state.resolve(<String>['missing', group.id]).single.id, group.id);
       await RuleGroupStore.remove(group.id);
       expect(RuleGroupStore.state.byId(group.id), isNull);
+    });
+
+    testWidgets('list: the add button is named and creates a group', (tester) async {
+      await tester.pumpWidget(appUnderTest(const RuleGroupsScreen()));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.noRuleGroups), findsOneWidget);
+      expect(find.byTooltip(AppStrings.addRuleGroup), findsWidgets);
+      await tester.runAsync(() async {
+        await tester.tap(find.byTooltip(AppStrings.addRuleGroup).first);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
+      await tester.pumpAndSettle();
+      expect(RuleGroupStore.state.sorted.map((g) => g.name), <String>[AppStrings.newRuleGroup]);
+      expect(find.text(AppStrings.newRuleGroup), findsOneWidget);
+      expect(find.text(AppStrings.noRuleGroups), findsNothing);
+    });
+
+    testWidgets('editor: rules save as typed, empty rows left out', (tester) async {
+      late RuleGroup group;
+      await tester.runAsync(() async {
+        group = await RuleGroupStore.create('Work');
+        await RuleGroupStore.save(group.copyWith(included: <String>['10.0.0.0/8']));
+      });
+      await tester.pumpWidget(appUnderTest(RuleGroupEditorScreen(groupId: group.id)));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.excludedRules.toUpperCase()), findsOneWidget);
+      await tester.runAsync(() async {
+        await tester.enterText(find.widgetWithText(TextField, '10.0.0.0/8'), '10.1.0.0/16');
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
+      await tester.pumpAndSettle();
+      expect(RuleGroupStore.state.byId(group.id)!.included, <String>['10.1.0.0/16']);
+      // Add: a new empty row, not saved while empty.
+      await tester.tap(find.text(tr(Strings.globalActionsAdd)).first);
+      await tester.pumpAndSettle();
+      expect(RuleGroupStore.state.byId(group.id)!.included, <String>['10.1.0.0/16']);
+      // The name saves too.
+      await tester.runAsync(() async {
+        await tester.enterText(find.widgetWithText(TextField, 'Work'), 'Office');
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
+      await tester.pumpAndSettle();
+      expect(RuleGroupStore.state.byId(group.id)!.name, 'Office');
+      expect(find.text('10.1.0.0/16'), findsOneWidget, reason: 'rows keep their text across rebuilds');
+    });
+
+    testWidgets('editor: delete asks first; cancel keeps the group', (tester) async {
+      late RuleGroup group;
+      await tester.runAsync(() async => group = await RuleGroupStore.create('Work'));
+      await tester.pumpWidget(appUnderTest(RuleGroupEditorScreen(groupId: group.id)));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text(AppStrings.deleteRuleGroup), 200, scrollable: find.byType(Scrollable).first);
+      await tester.tap(find.text(AppStrings.deleteRuleGroup));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      await tester.tap(find.text(tr(Strings.globalActionsCancel)));
+      await tester.pumpAndSettle();
+      expect(RuleGroupStore.state.byId(group.id), isNotNull);
     });
 
     test('connect hands the engine the profile with its groups applied', () async {
