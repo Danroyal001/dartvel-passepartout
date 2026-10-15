@@ -26,66 +26,65 @@ import '../../l10n/strings.g.dart';
 import '../kit.dart';
 import 'settings_support.dart';
 
-class const SettingsScreen({super.key, final bool? desktopLayout}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final desktop = desktopLayout ?? isDesktopPlatform;
-    final preferences = PSRow(
-      title: tr(Strings.globalNounsPreferences),
-      navigates: true,
-      onTap: () => pushRoute(DVRoutes.settingspreferences),
-    );
-    // Dartvel VPN: reusable split-tunnel rules (not in upstream).
-    final ruleGroups = PSRow(
-      title: AppStrings.ruleGroups,
-      navigates: true,
-      onTap: () => pushRoute(DVRoutes.settingsrulegroups),
-    );
-    final version = PSRow(
-      title: tr(Strings.globalNounsVersion),
-      // `themeTrailingValue(versionString)` is iOS only.
-      value: desktop ? null : SettingsBundle.versionString,
-      navigates: true,
-      onTap: () => pushRoute(DVRoutes.settingsversion),
-    );
-    final links = PSRow(
-      title: tr(Strings.viewsSettingsLinksTitle),
-      navigates: true,
-      onTap: () => pushRoute(DVRoutes.settingsabout),
-    );
-    final credits = PSRow(
-      title: tr(Strings.viewsSettingsCreditsTitle),
-      navigates: true,
-      onTap: () => pushRoute(DVRoutes.settingsaboutcredits),
-    );
-    const faq = SettingsLinkRow(title: SettingsUnlocalized.faq, url: SettingsConstants.faqUrl);
-    final diagnostics = PSRow(
-      title: tr(Strings.viewsDiagnosticsTitle),
-      navigates: true,
-      onTap: () => pushRoute(DVRoutes.settingsdiagnostics),
-    );
-    // `VersionUpdateLink` shows a row only once the version checker found a
-    // newer release; this port has no version checker yet, so it is empty.
-    final sections = desktop
-        ? <Widget>[
-            PSSection(children: <Widget>[preferences, ruleGroups]),
-            PSSection(header: tr(Strings.globalNounsAbout), children: <Widget>[version, links, credits]),
-            PSSection(header: tr(Strings.globalNounsTroubleshooting), children: <Widget>[faq, diagnostics]),
-            Padding(
-              padding: const .all(16),
-              child: Text(SettingsBundle.versionString, textAlign: TextAlign.center),
-            ),
-          ]
-        : <Widget>[
-            PSSection(children: <Widget>[preferences, ruleGroups, version]),
-            PSSection(header: tr(Strings.globalNounsAbout), children: <Widget>[links, credits]),
-            PSSection(header: tr(Strings.globalNounsTroubleshooting), children: const <Widget>[faq]),
-            PSSection(children: <Widget>[diagnostics]),
-          ];
-    return PSScaffold(
-      // iOS: `Strings.Global.Nouns.settings`; macOS: `Strings.Views.Settings.title`.
-      title: desktop ? tr(Strings.viewsSettingsTitle) : tr(Strings.globalNounsSettings),
-      body: PSForm(children: sections),
-    );
-  }
+@DVFunctionalWidget()
+Widget _settingsScreen(BuildContext context, {bool? desktopLayout}) {
+  final desktop = desktopLayout ?? isDesktopPlatform;
+  final preferences = PSRow(
+    title: tr(Strings.globalNounsPreferences),
+    navigates: true,
+    onTap: () => pushRoute(DVRoutes.settingspreferences),
+  );
+  // Dartvel VPN: reusable split-tunnel rules (not in upstream).
+  final ruleGroups = PSRow(
+    title: AppStrings.ruleGroups,
+    navigates: true,
+    onTap: () => pushRoute(DVRoutes.settingsrulegroups),
+  );
+  final version = PSRow(
+    title: tr(Strings.globalNounsVersion),
+    // `themeTrailingValue(versionString)` is iOS only.
+    value: desktop ? null : SettingsBundle.versionString,
+    navigates: true,
+    onTap: () => pushRoute(DVRoutes.settingsversion),
+  );
+  final links = PSRow(
+    title: tr(Strings.viewsSettingsLinksTitle),
+    navigates: true,
+    onTap: () => pushRoute(DVRoutes.settingsabout),
+  );
+  final credits = PSRow(
+    title: tr(Strings.viewsSettingsCreditsTitle),
+    navigates: true,
+    onTap: () => pushRoute(DVRoutes.settingsaboutcredits),
+  );
+  const faq = SettingsLinkRow(title: SettingsUnlocalized.faq, url: SettingsConstants.faqUrl);
+  final diagnostics = PSRow(
+    title: tr(Strings.viewsDiagnosticsTitle),
+    navigates: true,
+    onTap: () => pushRoute(DVRoutes.settingsdiagnostics),
+  );
+  // `VersionUpdateLink` shows a row only once the version checker found a
+  // newer release; this port has no version checker yet, so it is empty.
+  final sections = desktop
+      ? <Widget>[
+          PSSection(children: <Widget>[preferences, ruleGroups]),
+          PSSection(header: tr(Strings.globalNounsAbout), children: <Widget>[version, links, credits]),
+          PSSection(header: tr(Strings.globalNounsTroubleshooting), children: <Widget>[faq, diagnostics]),
+          // DVText has no textAlign; the ambient style centres it.
+          DefaultTextStyle.merge(
+            textAlign: TextAlign.center,
+            child: DVText(SettingsBundle.versionString, const DVModifier().padding(16)),
+          ),
+        ]
+      : <Widget>[
+          PSSection(children: <Widget>[preferences, ruleGroups, version]),
+          PSSection(header: tr(Strings.globalNounsAbout), children: <Widget>[links, credits]),
+          PSSection(header: tr(Strings.globalNounsTroubleshooting), children: const <Widget>[faq]),
+          PSSection(children: <Widget>[diagnostics]),
+        ];
+  return PSScaffold(
+    // iOS: `Strings.Global.Nouns.settings`; macOS: `Strings.Views.Settings.title`.
+    title: desktop ? tr(Strings.viewsSettingsTitle) : tr(Strings.globalNounsSettings),
+    body: PSForm(children: sections),
+  );
 }

@@ -11,11 +11,9 @@ import 'package:passepartout/domain/profile.dart';
 import 'package:passepartout/l10n/app_strings.dart';
 import 'package:passepartout/platform/vpn_service.dart';
 import 'package:passepartout/state/rule_groups_store.dart';
-import 'package:passepartout/ui/kit.dart';
 import 'package:passepartout/ui/modules/module_view.dart';
 import 'package:passepartout/ui/modules/wireguard/wireguard_configuration.dart';
 import 'package:passepartout/ui/modules/wireguard_view.dart';
-import 'package:passepartout/ui/settings/rule_groups_screen.dart';
 
 import 'support/app_harness.dart';
 
