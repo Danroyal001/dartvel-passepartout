@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_strings.dart';
 import '../../l10n/strings.g.dart';
 import '../../dartvel_client/dartvel_client.dart';
 import '../kit.dart';
@@ -14,9 +15,9 @@ import 'common/addresses.dart';
 import 'common/module_builder_cache.dart';
 import 'module_view.dart';
 
-/// `IPSettings` as JSON, always with its three required lists.
-Map<String, dynamic> _settings(Object? json) {
-  final value = json is Map ? Map<String, dynamic>.from(json) : <String, dynamic>{};
+/// `IPSettings` as a module map, always with its three required lists.
+Map<String, dynamic> _settings(Object? raw) {
+  final value = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
   return <String, dynamic>{
     ...value,
     'subnets': <dynamic>[...?(value['subnets'] as List?)],
@@ -38,7 +39,7 @@ Map<String, dynamic>? _nilIfEmpty(Map<String, dynamic>? settings) {
 final class IpBuilder {
   IpBuilder({this.ipv4, this.ipv6, this.mtu = ''});
 
-  factory IpBuilder.fromJson(Map<String, dynamic> value) {
+  factory IpBuilder.fromModule(Map<String, dynamic> value) {
     final builder = IpBuilder(
       ipv4: value['ipv4'] == null ? null : _settings(value['ipv4']),
       ipv6: value['ipv6'] == null ? null : _settings(value['ipv6']),
@@ -100,7 +101,7 @@ final class IpBuilder {
       };
 }
 
-final ModuleBuilderCache<IpBuilder> ipBuilders = ModuleBuilderCache<IpBuilder>(IpBuilder.fromJson);
+final ModuleBuilderCache<IpBuilder> ipBuilders = ModuleBuilderCache<IpBuilder>(IpBuilder.fromModule);
 
 /// RouteView.parseAndSubmit(): the route JSON, or null when upstream would
 /// ignore the OK (destination not a subnet of [family], gateway of another family).
@@ -144,7 +145,7 @@ List<Widget> ipSections(BuildContext context, ModuleViewArgs args) {
         key: ValueKey<String>('ip/${family.name}/${included ? 'included' : 'excluded'}'),
         children: <Widget>[
           for (var i = 0; i < routes.length; i++)
-            _RouteRow(
+            RouteRow(
               description: routeDescription(Map<String, dynamic>.from(routes[i] as Map)),
               onRemove: () => edit((b) => b.removeRoute(family, i, included: included)),
             ),
@@ -191,88 +192,84 @@ List<Widget> ipSections(BuildContext context, ModuleViewArgs args) {
 }
 
 /// `ThemeRemovableItemRow(isEditing: true)` around `ThemeCopiableText`.
-class _RouteRow extends StatelessWidget {
-  const _RouteRow({required this.description, required this.onRemove});
-
-  final String description;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) => Row(children: <Widget>[
-        IconButton(
-          tooltip: tr(Strings.globalActionsDelete),
-          icon: const Icon(Icons.remove_circle, color: PSColors.error),
+@DVFunctionalWidget()
+Widget _routeRow(BuildContext context, {required String description, required VoidCallback onRemove}) => DVBox.row(
+      <Widget>[
+        DVIconButton(
+          icon: Icons.remove_circle,
+          color: PSColors.error,
+          label: tr(Strings.globalActionsDelete),
           onPressed: onRemove,
         ),
         Expanded(
           child: PSRow(
             title: description,
-            trailing: IconButton(
-              tooltip: 'Copy',
-              icon: const Icon(Icons.copy, size: 18),
+            trailing: DVIconButton(
+              icon: Icons.copy,
+              size: 18,
+              label: AppStrings.copy,
               onPressed: () => copyToClipboard(context, description),
             ),
           ),
         ),
-      ]);
-}
+      ],
+      spacing: 0,
+      crossAlign: .center,
+    );
 
 /// IPView.RouteView, presented modally: Default toggle, destination and
 /// gateway; OK submits only what upstream accepts.
-class RouteDialog extends StatefulWidget {
-  const RouteDialog({super.key, required this.family, required this.title});
-
-  final AddressFamily family;
-  final String title;
-
-  @override
-  State<RouteDialog> createState() => _RouteDialogState();
-}
-
-class _RouteDialogState extends State<RouteDialog> {
-  String _destination = '';
-  String _gateway = '';
-  bool _isDefault = false;
-
-  void _submit() {
-    final route = parseRoute(widget.family, isDefault: _isDefault, destination: _destination, gateway: _gateway);
+@DVFunctionalWidget()
+Widget _routeDialog(BuildContext context, {required AddressFamily family, required String title}) {
+  final DVSignal<String> destination = context.signal<String>('');
+  final DVSignal<String> gateway = context.signal<String>('');
+  final DVSignal<bool> isDefault = context.signal<bool>(false);
+  void submit() {
+    final route = parseRoute(
+      family,
+      isDefault: isDefault.read(),
+      destination: destination.read(),
+      gateway: gateway.read(),
+    );
     if (route != null) Navigator.of(context).pop(route);
   }
 
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: Text(widget.title),
-        contentPadding: const .symmetric(vertical: 12),
-        content: SizedBox(
-          width: 420,
-          child: Column(mainAxisSize: .min, children: <Widget>[
-            PSToggleRow(
-              title: tr(Strings.globalNounsDefault),
-              value: _isDefault,
-              onChanged: (value) => setState(() => _isDefault = value),
+  return AlertDialog(
+    title: DVText(title),
+    contentPadding: const .symmetric(vertical: 12),
+    content: DVBox(
+      DVBox.list(
+        <Widget>[
+          PSToggleRow(
+            title: tr(Strings.globalNounsDefault),
+            value: isDefault.value,
+            onChanged: (value) => isDefault.value = value,
+          ),
+          if (!isDefault.value) ...<Widget>[
+            PSTextRow(
+              key: const ValueKey<String>('route/destination'),
+              label: tr(Strings.globalNounsDestination),
+              value: destination.value,
+              placeholder: family.destinationPlaceholder,
+              onChanged: (value) => destination.value = value,
             ),
-            if (!_isDefault) ...<Widget>[
-              PSTextRow(
-                key: const ValueKey<String>('route/destination'),
-                label: tr(Strings.globalNounsDestination),
-                value: _destination,
-                placeholder: widget.family.destinationPlaceholder,
-                onChanged: (value) => setState(() => _destination = value),
-              ),
-              PSTextRow(
-                key: const ValueKey<String>('route/gateway'),
-                label: tr(Strings.globalNounsGateway),
-                value: _gateway,
-                placeholder: widget.family.addressPlaceholder,
-                onChanged: (value) => setState(() => _gateway = value),
-                onSubmitted: (_) => _submit(),
-              ),
-            ],
-          ]),
-        ),
-        actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr(Strings.globalActionsCancel))),
-          TextButton(onPressed: _submit, child: Text(tr(Strings.globalNounsOk))),
+            PSTextRow(
+              key: const ValueKey<String>('route/gateway'),
+              label: tr(Strings.globalNounsGateway),
+              value: gateway.value,
+              placeholder: family.addressPlaceholder,
+              onChanged: (value) => gateway.value = value,
+              onSubmitted: (_) => submit(),
+            ),
+          ],
         ],
-      );
+        spacing: 0,
+      ),
+      const DVModifier().width(420),
+    ),
+    actions: <Widget>[
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: DVText(tr(Strings.globalActionsCancel))),
+      TextButton(onPressed: submit, child: DVText(tr(Strings.globalNounsOk))),
+    ],
+  );
 }

@@ -2,7 +2,6 @@
 // Copyright 2026 SigmaDev
 
 import '../../../l10n/strings.g.dart';
-import '../../../dartvel_client/dartvel_client.dart';
 import '../../kit.dart';
 
 /// Formats seconds as an OpenVPN time string: '0s', '10s', '1m', '1h1m1s'.

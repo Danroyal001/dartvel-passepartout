@@ -5,7 +5,6 @@
 
 import '../../../domain/wireguard_validation.dart';
 import '../../../l10n/strings.g.dart';
-import '../../../dartvel_client/dartvel_client.dart';
 import '../../kit.dart';
 
 export '../../../domain/wireguard_validation.dart';

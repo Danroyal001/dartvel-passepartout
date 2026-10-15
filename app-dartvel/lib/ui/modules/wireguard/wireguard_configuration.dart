@@ -80,7 +80,7 @@ class const WireGuardConfiguration({required final TaggedModule module}) {
 
   List<WireGuardPeer> get peers => <WireGuardPeer>[
         for (final peer in (_configuration['peers'] as List?) ?? const <dynamic>[])
-          WireGuardPeer(json: Map<String, dynamic>.from(peer as Map)),
+          WireGuardPeer(value: Map<String, dynamic>.from(peer as Map)),
       ];
 
   /// Upstream disables "Add peer" while a peer with an empty public key exists.
@@ -150,7 +150,7 @@ class const WireGuardConfiguration({required final TaggedModule module}) {
   TaggedModule _withPeers(List<WireGuardPeer> peers) => _withConfiguration(<String, dynamic>{
         ..._configuration,
         'interface': _configuration['interface'] ?? <String, dynamic>{'privateKey': '', 'addresses': <dynamic>[]},
-        'peers': peers.map((peer) => peer.json).toList(),
+        'peers': peers.map((peer) => peer.value).toList(),
       });
 
   TaggedModule withPeer(int index, WireGuardPeer peer) => _withPeers(peers..[index] = peer);
@@ -170,38 +170,38 @@ class const WireGuardConfiguration({required final TaggedModule module}) {
 }
 
 /// One `WireGuard.RemoteInterface`.
-class const WireGuardPeer({required final Map<String, dynamic> json}) {
+class const WireGuardPeer({required final Map<String, dynamic> value}) {
   // Not const: the map is edited in place by the peer list helpers' copies.
   // ignore: prefer_const_constructors
-  factory WireGuardPeer.empty() => WireGuardPeer(json: <String, dynamic>{'publicKey': '', 'allowedIPs': <dynamic>[]});
+  factory WireGuardPeer.empty() => WireGuardPeer(value: <String, dynamic>{'publicKey': '', 'allowedIPs': <dynamic>[]});
 
-  String get publicKey => (json['publicKey'] as String?) ?? '';
+  String get publicKey => (value['publicKey'] as String?) ?? '';
 
-  String get preSharedKey => (json['preSharedKey'] as String?) ?? '';
+  String get preSharedKey => (value['preSharedKey'] as String?) ?? '';
 
   /// Shown in wg-quick form: IPv6 hosts in brackets (upstream `wgRepresentation`).
   String get endpoint {
-    final raw = (json['endpoint'] as String?) ?? '';
+    final raw = (value['endpoint'] as String?) ?? '';
     final separator = raw.lastIndexOf(':');
     if (raw.startsWith('[') || separator < 0) return raw;
     final host = raw.substring(0, separator);
     return host.contains(':') ? '[$host]${raw.substring(separator)}' : raw;
   }
 
-  List<String> get allowedIPs => _strings(json['allowedIPs']);
+  List<String> get allowedIPs => _strings(value['allowedIPs']);
 
   String get allowedIPsText => allowedIPs.join(wireGuardListSeparator);
 
-  String get keepAliveText => json['keepAlive']?.toString() ?? '';
+  String get keepAliveText => value['keepAlive']?.toString() ?? '';
 
   WireGuardPeer _with(String key, Object? newValue) {
-    final next = <String, dynamic>{...json};
+    final next = <String, dynamic>{...value};
     if (newValue == null) {
       next.remove(key);
     } else {
       next[key] = newValue;
     }
-    return WireGuardPeer(json: next);
+    return WireGuardPeer(value: next);
   }
 
   WireGuardPeer withPublicKey(String text) => _with('publicKey', text.trim());

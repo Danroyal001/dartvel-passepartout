@@ -75,6 +75,10 @@ dartvel:
   pwa:
     name: Dartvel VPN
     shortName: Dartvel VPN
+    description: Import, edit and connect WireGuard and OpenVPN profiles.
+    icon: assets/app_icon.png
+    themeColor: '#515D70'
+    backgroundColor: '#FFF8EE'
 
   desktop:
     name: Dartvel VPN
@@ -89,4 +93,5 @@ dartvel:
   seo:
     siteName: Dartvel VPN
     defaultTitle: Profiles
-    defaultDescription: A Dartvel application
+    defaultDescription: Import, edit and connect WireGuard and OpenVPN profiles.
+    favicon: assets/favicon.png

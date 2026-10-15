@@ -9,9 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/dartvel_client/dartvel_client.dart';
 import 'package:passepartout/domain/profile.dart';
+import 'package:passepartout/l10n/app_strings.dart';
 import 'package:passepartout/l10n/strings.g.dart';
+import 'package:passepartout/platform/network/current_network.dart';
 import 'package:passepartout/ui/kit.dart';
-import 'package:passepartout/ui/modules/common/editable_list_section.dart';
 import 'package:passepartout/ui/modules/common/module_validation.dart';
 import 'package:passepartout/ui/modules/dns_view.dart';
 import 'package:passepartout/ui/modules/http_proxy_view.dart';
@@ -318,6 +319,43 @@ void main() {
       await _pick(tester, 'Policy', 'All networks');
       expect(find.text('Add SSID'), findsNothing);
       expect(_last(edits)['policy'], 'any');
+    });
+
+    testWidgets('the current network section offers the Wi-Fi it probed and says what the rules do', (tester) async {
+      final probe = CurrentNetwork.probe;
+      addTearDown(() => CurrentNetwork.probe = probe);
+      var probes = 0;
+      CurrentNetwork.probe = () async {
+        probes++;
+        return const NetworkSnapshot(.wifi, ssid: 'Cafe');
+      };
+      final added = <String>[];
+      Future<void> pump(bool showsAddWifi) => tester.pumpWidget(MaterialApp(
+            theme: passepartoutTheme(Brightness.light),
+            home: Scaffold(
+              body: PSForm(children: <Widget>[
+                OnDemandCurrentNetworkSection(
+                  module: const <String, dynamic>{'policy': 'any', 'withSSIDs': <String, bool>{}, 'withOtherNetworks': <String>[]},
+                  showsAddWifi: showsAddWifi,
+                  onAddWifi: added.add,
+                ),
+              ]),
+            ),
+          ));
+      await pump(true);
+      // Before the probe answers: no Wi-Fi to add, the footer says what arming does.
+      expect(find.text(AppStrings.noCurrentWifi), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.text('Cafe'), findsOneWidget);
+      expect(find.textContaining(AppStrings.onDemandNow('Wi-Fi "Cafe"', AppStrings.onDemandConnect)), findsOneWidget);
+      await tester.tap(find.text(AppStrings.addCurrentWifi));
+      expect(added, <String>['Cafe']);
+      // Rebuilt with other arguments, it keeps what it probed and does not probe again.
+      await pump(false);
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.addCurrentWifi), findsNothing);
+      expect(find.textContaining('Wi-Fi "Cafe"'), findsOneWidget);
+      expect(probes, 1);
     });
   });
 }

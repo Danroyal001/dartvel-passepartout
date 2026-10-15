@@ -93,7 +93,7 @@ Widget _ruleGroupEditorScreen(BuildContext context, {required String groupId}) {
   final excluded = excludedRows.value ?? stringItems(group.excluded);
 
   Widget rulesSection(String key, String header, String footer, List<ListItem<String>> rows, DVSignal<List<ListItem<String>>?> into) =>
-      EditableListSection<String>(
+      editableListSection<String>(
         key: ValueKey<String>('rule-group/$key'),
         header: header,
         footer: footer,
@@ -108,8 +108,7 @@ Widget _ruleGroupEditorScreen(BuildContext context, {required String groupId}) {
         itemBuilder: (context, item, setValue) {
           final rule = item.value.trim();
           final invalid = rule.isNotEmpty && RuleTarget.parse(rule) == null;
-          // No URL keyboard: ListItemTextField's keyboardType has no DV
-          // input equivalent, so the ported field will not take it.
+          // No URL keyboard: DV inputs have no keyboardType.
           return DVBox.list(
             <Widget>[
               ListItemTextField(

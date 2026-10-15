@@ -38,20 +38,18 @@ Future<TaggedModule> importWireGuardConfiguration(TaggedModule module, String te
 }
 
 /// `ModuleImportSection`: one "Import from file" button.
-class const WireGuardImportSection({super.key, required final ModuleViewArgs args}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => PSSection(children: <Widget>[
-        PSRow(
-          title: tr(Strings.modulesGeneralRowsImportFromFile),
-          onTap: () => runGuarded(
-            context,
-            () async {
-              final text = await wireGuardFileReader();
-              if (text == null) return;
-              args.onChanged(await importWireGuardConfiguration(args.module, text));
-            },
-            title: args.module.typeLabel,
-          ),
+@DVFunctionalWidget()
+Widget _wireGuardImportSection(BuildContext context, {required ModuleViewArgs args}) => PSSection(children: <Widget>[
+      PSRow(
+        title: tr(Strings.modulesGeneralRowsImportFromFile),
+        onTap: () => runGuarded(
+          context,
+          () async {
+            final text = await wireGuardFileReader();
+            if (text == null) return;
+            args.onChanged(await importWireGuardConfiguration(args.module, text));
+          },
+          title: args.module.typeLabel,
         ),
-      ]);
-}
+      ),
+    ]);

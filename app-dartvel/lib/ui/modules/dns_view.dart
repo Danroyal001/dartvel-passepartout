@@ -39,7 +39,7 @@ final class DnsBuilder {
   }) : servers = servers ?? <ListItem<String>>[];
 
   /// `DNSModule.builder()`.
-  factory DnsBuilder.fromJson(Map<String, dynamic> value) {
+  factory DnsBuilder.fromModule(Map<String, dynamic> value) {
     final builder = DnsBuilder(servers: stringItems(value['servers'] as List?));
     final protocol = value['protocolType'];
     if (protocol is Map) {
@@ -150,7 +150,7 @@ final class DnsBuilder {
   bool get hasNonEmptyDomains => inheritsVPN || (domains?.any((item) => item.value.isNotEmpty) ?? false);
 }
 
-final ModuleBuilderCache<DnsBuilder> dnsBuilders = ModuleBuilderCache<DnsBuilder>(DnsBuilder.fromJson);
+final ModuleBuilderCache<DnsBuilder> dnsBuilders = ModuleBuilderCache<DnsBuilder>(DnsBuilder.fromModule);
 
 /// Upstream's save-time error for this DNS module, localised; null when valid.
 String? dnsValidationError(TaggedModule module) {
@@ -236,7 +236,7 @@ List<Widget> dnsSections(BuildContext context, ModuleViewArgs args) {
             ),
         ],
       ),
-      EditableListSection<String>(
+      editableListSection<String>(
         key: const ValueKey<String>('dns/servers'),
         header: tr(Strings.entitiesDnsServers),
         addTitle: tr(Strings.modulesDnsServersAdd),
@@ -248,13 +248,12 @@ List<Widget> dnsSections(BuildContext context, ModuleViewArgs args) {
           key: ValueKey<String>('dns/servers/${item.id}'),
           value: item.value,
           placeholder: '1.1.1.1',
-          keyboardType: TextInputType.url,
           semanticLabel: tr(Strings.entitiesDnsServers),
           onChanged: setValue,
         ),
       ),
       if (builder.protocolType == 'cleartext') ...<Widget>[
-        EditableListSection<String>(
+        editableListSection<String>(
           key: const ValueKey<String>('dns/domains'),
           header: tr(Strings.entitiesDnsDomains),
           addTitle: tr(Strings.modulesDnsDomainsAdd),
@@ -266,7 +265,6 @@ List<Widget> dnsSections(BuildContext context, ModuleViewArgs args) {
             key: ValueKey<String>('dns/domains/${item.id}'),
             value: item.value,
             placeholder: 'example.com',
-            keyboardType: TextInputType.url,
             semanticLabel: tr(Strings.entitiesDnsDomains),
             onChanged: setValue,
           ),
