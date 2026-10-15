@@ -17,9 +17,6 @@ import 'package:passepartout/platform/vpn_service.dart';
 import 'package:passepartout/state/app_state.dart';
 import 'package:passepartout/state/profile_draft.dart';
 import 'package:passepartout/ui/kit.dart';
-import 'package:passepartout/ui/screens/import_text_screen.dart';
-import 'package:passepartout/ui/screens/profile_editor_screen.dart';
-import 'package:passepartout/ui/screens/profiles_screen.dart';
 
 import 'support/app_harness.dart';
 
