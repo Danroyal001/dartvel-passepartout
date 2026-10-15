@@ -13,7 +13,6 @@ import 'package:passepartout/platform/network/domain_resolver.dart';
 import 'package:passepartout/state/app_state.dart';
 import 'package:passepartout/state/rule_groups_store.dart';
 import 'package:passepartout/ui/kit.dart';
-import 'package:passepartout/ui/settings/rule_groups_screen.dart';
 
 import 'support/app_harness.dart';
 

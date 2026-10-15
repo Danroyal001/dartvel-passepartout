@@ -15,7 +15,6 @@ import 'package:passepartout/ui/kit.dart';
 import 'package:passepartout/ui/modules/module_view.dart';
 import 'package:passepartout/ui/modules/wireguard/wireguard_configuration.dart';
 import 'package:passepartout/ui/modules/wireguard_view.dart';
-import 'package:passepartout/ui/settings/rule_groups_screen.dart';
 
 import 'support/app_harness.dart';
 
