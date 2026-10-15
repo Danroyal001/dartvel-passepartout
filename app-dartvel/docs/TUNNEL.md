@@ -56,11 +56,19 @@ Reinstallation removes file capabilities; never silently reapply them.
 
 ## Protocol and ownership
 
-The profile goes through a unique mode-0700 temporary directory and mode-0600 file;
-it never appears in arguments, environment or logs. The helper reads it before
-sending `{"type":"ready","pid":123}`. The app deletes the directory after that
-acknowledgement, on startup failure or timeout. A killed app cannot guarantee temp
-cleanup, so OS temp cleanup remains necessary after abrupt termination.
+The helper runs as root and takes **no path argument**: it cannot be pointed at a file.
+The app writes the profile (which holds the WireGuard private key) as the first stdin
+line, at most 4 MiB (`kMaxHelperProfileBytes`); a longer line, a missing line or a line
+that is not a JSON object is refused. The profile is never written to disk and never
+appears in arguments, environment or logs. Failures report only a fixed code
+(`profile_missing`, `profile_too_large`, `profile_invalid`, `profile_timeout`,
+`helper_failure` with the exception type), never any part of the input. Later stdin lines
+are commands (`stop`). The helper sends `{"type":"ready","pid":123}` once the engine started.
+
+`partout-tunnel --cleanup` removes routing rules, the nftables kill switch and DNS changes a
+killed helper left behind. The app runs it (through pkexec) after a helper exit with a
+non-zero code, and when a stop cannot be confirmed. Without it the kill switch, which fails
+closed, would keep blocking traffic until the next connect.
 
 Stdout contains JSON lines with `type`: `ready`, `status` (disconnected/connecting/
 connected/disconnecting), `data` (received/sent byte totals), `error` (code), `log`
@@ -94,7 +102,7 @@ private protocol data redacted. Rotation/deletion UX is a follow-up.
 ## Verification
 
 `flutter test test/tunnel_process_test.dart` covers strict event validation, real
-fake-child lifecycle, byte/status delivery, stderr, private modes, file deletion,
+fake-child lifecycle, byte/status delivery, stderr, stdin profile delivery, no temp file,
 duplicate start, early exit, startup timeout and graceful stop. C is compiled with
 warnings as errors. `dart run tool/tunnel_helper/probe.dart` imports the WireGuard
 fixture, replaces its endpoint with 127.0.0.1:51820 and runs the real helper for
@@ -167,3 +175,17 @@ Recorded on this host: both `tool/tunnel_helper/probe-stop.jsonl` and
 `probe-sigterm.jsonl` show native connecting, tun creation denied (`tunNotAvailable`),
 and clean native exit 0 after the respective shutdown path. No successful handshake,
 privileged routing/DNS restoration, or polkit prompt was tested on this server.
+
+## Known limits of the Linux network plan
+
+- **Endpoint bypass:** a routing rule sends traffic to the endpoint's UDP port outside the
+  tunnel (encrypted packets must not loop into it). Any local process can therefore send UDP
+  to `endpoint:port` without the tunnel, even with the kill switch on.
+- **Containers and VMs:** the kill switch hooks the nftables `output` chain only. Traffic
+  forwarded for containers, VMs or network namespaces is not covered and can leave through
+  the physical interface while the tunnel is down.
+- **IPv6:** a profile with only IPv4 addresses routes no IPv6 through the tunnel. Without
+  the kill switch, IPv6 traffic goes out the physical interface (a leak). Turn the kill
+  switch on ("Enforce tunnel") to block it.
+- **resolv.conf:** without systemd-resolved the helper rewrites `/etc/resolv.conf` (backup
+  restored on stop); if that path is a symlink, the target is written through the link.

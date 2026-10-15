@@ -44,13 +44,13 @@ void main() {
     return file.path;
   }
 
-  test('private profile, stream, cleanup, duplicate guard and stop', () async {
+  test('profile on stdin, stream, duplicate guard and stop', () async {
     final report = '${temp.path}/report';
     final script = await helper('''
 import sys,os,json
-path=sys.argv[1]
+first=sys.stdin.readline()
 with open(${jsonEncode(report)},'w') as out:
- json.dump({'path':path,'mode':os.stat(path).st_mode & 511,'parent':os.stat(os.path.dirname(path)).st_mode & 511,'profile':open(path).read()},out)
+ json.dump({'argv':sys.argv[1:],'profile':first},out)
 print(json.dumps({'type':'ready','pid':os.getpid()}),flush=True)
 print('invalid',flush=True)
 print(json.dumps({'type':'status','status':'connecting'}),flush=True)
@@ -64,10 +64,9 @@ for line in sys.stdin:
     final process = TunnelProcess('/usr/bin/python3', prefix: [script]);
     await process.start('{"secret":"test"}', events.add, logs.add);
     final recorded = jsonDecode(await File(report).readAsString());
-    expect(recorded['mode'], 384);
-    expect(recorded['parent'], 448);
-    expect(recorded['profile'], '{"secret":"test"}');
-    expect(await File(recorded['path'] as String).exists(), false);
+    // No path or profile on the command line, and the profile arrived on stdin.
+    expect(recorded['argv'], ['--stdin']);
+    expect(recorded['profile'], '{"secret":"test"}\n');
     await expectLater(
       process.start('{}', events.add, logs.add),
       throwsStateError,
@@ -82,14 +81,21 @@ for line in sys.stdin:
     expect(logs, contains('native log'));
     expect(logs, contains('Invalid helper event'));
   });
-  test('early exit deletes profile', () async {
-    final report = '${temp.path}/path';
+  test('no temp profile file is written', () async {
+    final before = Directory.systemTemp.listSync().where((e) => e.path.contains('partout-')).length;
     final script = await helper(
-      "import sys\nopen(${jsonEncode(report)},'w').write(sys.argv[1])\nsys.exit(7)\n",
+      'import sys,os,json\nsys.stdin.readline()\nprint(json.dumps({"type":"ready","pid":os.getpid()}),flush=True)\nfor l in sys.stdin:\n if l.strip()=="stop": break\n',
     );
     final process = TunnelProcess('/usr/bin/python3', prefix: [script]);
+    await process.start('{"k":1}', (_) {}, (_) {});
+    final during = Directory.systemTemp.listSync().where((e) => e.path.contains('partout-')).length;
+    await process.stop();
+    expect(during, before);
+  });
+  test('early exit fails the start', () async {
+    final script = await helper('import sys\nsys.exit(7)\n');
+    final process = TunnelProcess('/usr/bin/python3', prefix: [script]);
     await expectLater(process.start('{}', (_) {}, (_) {}), throwsStateError);
-    expect(await File(await File(report).readAsString()).exists(), false);
   });
   test('timeout sends stop', () async {
     final script = await helper(

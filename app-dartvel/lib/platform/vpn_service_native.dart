@@ -197,6 +197,9 @@ class PartoutVpnService implements VpnService {
               _tunnel = null;
               _closeLog();
             }
+            // A helper that ended with an error or a signal may have left the
+            // kill switch behind: it fails closed and would block traffic.
+            if (event['code'] != 0) unawaited(restoreNetwork());
         }
       }, _writeLog);
     } catch (_) {
@@ -213,8 +216,26 @@ class PartoutVpnService implements VpnService {
   Future<void> disconnect() async {
     final tunnel = _tunnel;
     if (tunnel == null) return;
-    await tunnel.stop();
-    _tunnel = null;
-    await _closeLog();
+    try {
+      await tunnel.stop();
+    } catch (_) {
+      // The helper would not stop: undo its network changes anyway.
+      await restoreNetwork();
+      rethrow;
+    } finally {
+      _tunnel = null;
+      await _closeLog();
+    }
+  }
+
+  @override
+  Future<void> restoreNetwork() async {
+    if (!canConnect) return;
+    final result = await Process.run(_pkexec!, [_helper, '--cleanup']);
+    _writeLog(
+      result.exitCode == 0
+          ? 'Network restored'
+          : 'Network restore failed (exit ${result.exitCode})',
+    );
   }
 }

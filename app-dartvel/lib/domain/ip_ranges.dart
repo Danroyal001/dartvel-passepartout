@@ -135,6 +135,30 @@ final class IpBlock {
 
   bool get isIPv4 => address.isIPv4;
 
+  /// True for `0.0.0.0/0` and `::/0`.
+  bool get isDefault => prefixLength == 0;
+
+  /// The same block with the host bits cleared: `10.0.0.7/24` -> `10.0.0.0/24`
+  /// (what `ip route` accepts).
+  IpBlock get network {
+    final masked = <int>[
+      for (var index = 0; index < address.bytes.length; index++)
+        () {
+          final bitsLeft = prefixLength - index * 8;
+          if (bitsLeft >= 8) return address.bytes[index];
+          if (bitsLeft <= 0) return 0;
+          return address.bytes[index] & (0xff << (8 - bitsLeft)) & 0xff;
+        }(),
+    ];
+    return IpBlock._(IpAddress._(masked), prefixLength);
+  }
+
+  @override
+  bool operator ==(Object other) => other is IpBlock && other.toString() == toString();
+
+  @override
+  int get hashCode => toString().hashCode;
+
   @override
   String toString() => '${address.canonical}/$prefixLength';
 }
