@@ -29,8 +29,8 @@ void main() {
     });
 
     test('imports protonvpn.ovpn fixture with TLS wrap and XOR scramble', () async {
-      final path = '/home/sigmadev/passepartout/partout/tests/openvpn/fixtures/protonvpn.ovpn';
-      if (!File(path).existsSync()) return;
+      final path = '../partout/tests/openvpn/fixtures/protonvpn.ovpn';
+      expect(File(path).existsSync(), isTrue, reason: 'Partout fixtures: git submodule update --init');
 
       final text = File(path).readAsStringSync();
       final module = await engine.importModule(text);
@@ -56,8 +56,8 @@ void main() {
     });
 
     test('imports pia-hungary.ovpn fixture with multiple remotes and compression', () async {
-      final path = '/home/sigmadev/passepartout/partout/tests/openvpn/fixtures/pia-hungary.ovpn';
-      if (!File(path).existsSync()) return;
+      final path = '../partout/tests/openvpn/fixtures/pia-hungary.ovpn';
+      expect(File(path).existsSync(), isTrue, reason: 'Partout fixtures: git submodule update --init');
 
       final text = File(path).readAsStringSync();
       final module = await engine.importModule(text);

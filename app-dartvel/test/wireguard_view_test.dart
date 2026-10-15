@@ -201,7 +201,7 @@ void main() {
   final shotDir = io.Platform.environment['WG_SHOT_DIR'];
   testWidgets('screenshot', skip: shotDir == null, (tester) async {
     await tester.runAsync(() async {
-      final fonts = '${io.Platform.environment['FLUTTER_ROOT'] ?? '/home/sigmadev/snap/flutter/common/flutter'}/bin/cache/artifacts/material_fonts';
+      final fonts = '${io.Platform.environment['FLUTTER_ROOT'] ?? io.File(io.Platform.resolvedExecutable).parent.parent.parent.parent.parent.path}/bin/cache/artifacts/material_fonts';
       Future<void> load(String family, List<String> files) async {
         final loader = FontLoader(family);
         for (final file in files) {

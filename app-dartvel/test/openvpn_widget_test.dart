@@ -58,7 +58,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final path = '/home/sigmadev/passepartout/partout/tests/openvpn/fixtures/protonvpn.ovpn';
+      final path = '../partout/tests/openvpn/fixtures/protonvpn.ovpn';
       final text = File(path).readAsStringSync();
       final module = await engine.importModule(text);
 
