@@ -101,3 +101,70 @@ browser download fallback.
 
 QR import takes one photo (`DV.Platform.camera.takePhoto`) or an image file. A live scanner needs
 a camera preview stream from Dartvel.
+
+## conventions (audit 2026-10, Dartvel 0.12.2)
+
+### `DV.run()` cannot be the whole of `main`
+
+`DV.run(Widget app)` only hands a widget to Flutter. It takes neither the launch arguments
+(`negotiateDartvelLaunch(arguments)`, `createDartvelRouter(arguments:)`) nor startup work, so an
+app with stores to prepare before the first frame and load after it spells both out in `main`.
+Repro: `void main() => DV.run();` does not compile. lib/main.dart keeps the smallest form with a
+TODO. Wanted: `DV.run()` that reads the arguments and runs declared startup/after-first-frame hooks.
+
+### `@DVBackendFunction` has no `middleware:` field
+
+Middleware is a separate `@DVUseMiddleware([...])` annotation. Repro:
+`@DVBackendFunction(middleware: [DVMiddlewares.rateLimit])` -> undefined named parameter.
+lib/backend/functions/import_profile_text.dart uses `@DVUseMiddleware` with a TODO.
+
+### Typed backend functions stop at primitives and maps
+
+The generated client decodes `String`, numbers, `bool`, lists of those and `Map<String, Object?>`;
+any other return type, `@DVModel` classes included, generates a client function that needs a
+`fromJson:` mapper, so the application writes JSON decoding after all. Repro: a backend function
+returning a `@DVModel` type; its client function has a required `fromJson` parameter.
+
+### No device-only data model
+
+`@DVModel(offline: ...)` keeps a local store but replays writes to the server. VPN profiles hold
+private keys and must never leave the device, so the app keeps them (and preferences, rule groups,
+on-demand state) as JSON files in `DV.Platform.fileStorage`. Wanted: a model whose store is the
+device only (no server table, no replay), with the same `save()`/`find()` surface.
+
+### Functional widgets: no lifecycle, no type parameters, listeners not released
+
+- No `init`/`dispose` for `@DVFunctionalWidget`: an initial load or a periodic refresh needs a
+  workaround (lib/ui/kit.dart `runOnce`, `everyWhileMounted`, built on a signal and a timer that
+  checks `context.mounted`).
+- `Widget _list<T>(...)` is not recognised (the name regex expects `(` right after the name), so a
+  generic widget must become index-based (`PSPickerRow` + `pickerRow<T>()`).
+- `DVSignal.value` subscribes the element through `container.listen` and the subscription is kept
+  in an `Expando` that is never closed when the element unmounts.
+
+### DV inputs and text
+
+The `DVModifier.input(...)` field has no keyboard type, autofocus, text alignment, max length or
+text style (monospace); `DVText` has no `textAlign`. Number and URL fields therefore show the
+plain keyboard on phones. `DVIconButton.onPressed` is non-nullable, so a disabled icon button
+cannot be expressed.
+
+### No conventions check in the published CLI
+
+`dartvel doctor` 0.12.2 has the tooltip lint but no `--conventions` (StatelessWidget, `Text`,
+Listenable builders, JSON in app code, `main.dart`). This app checks them itself in
+test/conventions_test.dart.
+
+### Analyzing the generated server reports false errors
+
+`dart analyze .dart_tool/dartvel_backend_routes.g.dart` reports undefined named parameters
+(`pageData`, `pageStore`, ...) on `dv.serve`: `dartvel_shelf` exports `serve` conditionally
+(`if (dart.library.ffi)`) and the analyzer checks the non-FFI stub. The VM build uses the right one.
+
+### No way to declare an Android service or an Apple app extension
+
+Android needs a `VpnService` subclass with a `<service android:permission="android.permission.BIND_VPN_SERVICE">`
+manifest entry and intent filter; Apple needs a packet-tunnel app extension target with its own
+entitlements. A Dartvel app cannot declare either from pubspec (native folders are generated and
+not committed). Repro: enable android/ios in pubspec and try to express the `<service>` entry or the
+extension target. Details and the planned design: docs/TUNNEL.md. Connecting is therefore Linux-only.
