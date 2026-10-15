@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 /// The largest profile the privileged helper accepts on stdin (bytes,
 /// excluding the newline). A real profile is a few KiB.

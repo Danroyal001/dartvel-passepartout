@@ -124,31 +124,35 @@ packages:
   dartvel_cli:
     dependency: "direct dev"
     description:
-      path: "/home/sigmadev/dartvel_dev/packages/dartvel_cli"
-      relative: false
-    source: path
-    version: "0.11.5"
+      name: dartvel_cli
+      sha256: e9f83f4c7b032b0c3422c6ada021b7a4a70d7d0ff8e9d8593bfd405d17feb1a2
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.12.2"
   dartvel_core:
     dependency: "direct main"
     description:
-      path: "/home/sigmadev/dartvel_dev/packages/dartvel_core"
-      relative: false
-    source: path
-    version: "0.11.5"
+      name: dartvel_core
+      sha256: c61a03e3a4a0993ede999d0bc37d3086fce3c3c5e89beae4cb07280632d9f3c9
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.12.2"
   dartvel_flutter:
     dependency: "direct main"
     description:
-      path: "/home/sigmadev/dartvel_dev/packages/dartvel_flutter"
-      relative: false
-    source: path
-    version: "0.11.5"
+      name: dartvel_flutter
+      sha256: "6462ef4ea3e28b6c1ef75b26cbd6d5d1b0b40f346f28abc6f2c6c498665794b4"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.12.2"
   dartvel_shelf:
     dependency: "direct main"
     description:
-      path: "/home/sigmadev/dartvel_dev/packages/dartvel_shelf"
-      relative: false
-    source: path
-    version: "0.11.5"
+      name: dartvel_shelf
+      sha256: ab86cbae8dd3104153b0cc9c26e054e0ea68c3f0a01ad2093c22ed4078af614b
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.12.2"
   dbus:
     dependency: transitive
     description:
@@ -404,6 +408,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  native_stack_traces:
+    dependency: transitive
+    description:
+      name: native_stack_traces
+      sha256: "2117de75654627ac1ccbf325f70b0777ec3f4d20822a0e44ff7994d2fb1b19d0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.0"
   package_config:
     dependency: transitive
     description:

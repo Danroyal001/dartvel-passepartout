@@ -3,10 +3,10 @@
 These are the working rules for `passepartout`. The block below is written by `dartvel dev` and matched to the Dartvel version you have installed; text outside it is yours and is never touched.
 
 <!-- dartvel:begin agents -->
-<!-- Written by `dartvel dev`, matched to Dartvel 0.11.2.
+<!-- Written by `dartvel dev`, matched to Dartvel 0.12.2.
      Edits inside this block are replaced; text outside it is kept. -->
 
-## Dartvel 0.11.2
+## Dartvel 0.12.2
 
 # Dartvel working rules
 
@@ -159,11 +159,5 @@ carriers for model sync, `DVModelSync`, `DVSemanticIndex`, `DVOfflineRemote`,
 behind `DV.Jobs.work(...)`, and the platform bindings that report connectivity.
 An application reads the signal and waits; it does not drive the machinery.
 
-## Where to read more
-
-The documentation for this exact version ships with it, at:
-
-    /home/sigmadev/dartvel_dev/packages/dartvel_cli/docs
-
-Read it before adding anything: it describes the API as this version has it, which is not always what the newest website says.
+The documentation for this exact version ships with the `dartvel_cli` package (its `docs/` folder in the pub cache).
 <!-- dartvel:end agents -->

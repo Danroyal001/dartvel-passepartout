@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 // Copyright 2026 SigmaDev
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';

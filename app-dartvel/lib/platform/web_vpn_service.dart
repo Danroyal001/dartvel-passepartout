@@ -30,6 +30,8 @@ class const WebVpnService() implements VpnService {
       throw UnsupportedError(connectUnavailableReason!);
   @override
   Future<void> disconnect() async {}
+  @override
+  Future<void> restoreNetwork() async {}
   /// The engine runs in the web-server binary, which has no version endpoint yet.
   @override
   Future<String> engineVersion() async => 'Not available in the browser';
