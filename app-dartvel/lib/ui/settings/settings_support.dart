@@ -7,6 +7,7 @@
 
 import 'dart:convert';
 
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -60,6 +61,14 @@ abstract final class SettingsConstants {
   static String urlForIssue(int issue) => '$issuesUrl/$issue';
 
   static String urlForChangelog(String build) => '$rawUrl/refs/tags/builds/$build/app-apple/CHANGELOG.txt';
+}
+
+/// Fetches a text over HTTP (a license, the changelog); replaceable in tests.
+typedef TextFetcher = Future<String> Function(String url);
+
+Future<String> fetchText(String url) async {
+  final response = await dio.Dio().get<String>(url, options: dio.Options(responseType: .plain));
+  return response.data ?? '';
 }
 
 /// Opens [url] outside the app, the way upstream's `Link`/`ExternalLink` do.
@@ -196,14 +205,16 @@ void pushRoute(DVRouteTarget target) {
 }
 
 /// Upstream `Link`/`ExternalLink`: a row that opens [url] outside the app.
-class const SettingsLinkRow({super.key, required final String title, required final String url}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Semantics(
+@DVFunctionalWidget()
+Widget _settingsLinkRow(BuildContext context, {required String title, required String url}) => Tooltip(
+      message: title,
+      excludeFromSemantics: true,
+      child: Semantics(
         link: true,
         child: ListTile(
-          title: Text(title, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+          title: DVText(title, DVModifier().color(Theme.of(context).colorScheme.primary)),
           trailing: Icon(Icons.open_in_new, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
           onTap: () => openExternalUrl(url),
         ),
-      );
-}
+      ),
+    );

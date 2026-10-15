@@ -16,10 +16,7 @@ import 'package:passepartout/state/app_log.dart';
 import 'package:passepartout/state/app_state.dart';
 import 'package:passepartout/state/profile_draft.dart';
 import 'package:passepartout/ui/kit.dart';
-import 'package:passepartout/ui/settings/about_screen.dart';
 import 'package:passepartout/ui/settings/diagnostics_screen.dart';
-import 'package:passepartout/ui/settings/preferences_screen.dart';
-import 'package:passepartout/ui/settings/settings_screen.dart';
 import 'package:passepartout/ui/settings/settings_support.dart';
 
 /// main.dart's init order, without the app.
@@ -40,6 +37,10 @@ Future<void> pumpScreen(WidgetTester tester, Widget screen) async {
 
 Credits upstreamCredits() => Credits.fromJson(
     jsonDecode(File('assets/credits/credits.json').readAsStringSync()) as Map<String, dynamic>);
+
+/// The log text [LiveLogScreen] shows.
+String logText(WidgetTester tester) =>
+    tester.widget<DVText>(find.descendant(of: find.byType(SingleChildScrollView), matching: find.byType(DVText))).text;
 
 /// In-memory tunnel log files for [TunnelLogAccess].
 class MemoryTunnelLogs {
@@ -291,7 +292,7 @@ void main() {
       AppLog.error('second line');
       await pumpScreen(tester, const LiveLogScreen());
       expect(find.text(tr(Strings.viewsDiagnosticsRowsApp)), findsOneWidget);
-      final text = tester.widget<SelectableText>(find.byType(SelectableText)).data!;
+      final text = logText(tester);
       expect(text, contains('[info] first line'));
       expect(text, contains('[error] second line'));
       expect(find.byTooltip('Copy'), findsOneWidget);
@@ -309,6 +310,10 @@ void main() {
       await tester.pump();
       expect(find.text(tr(Strings.viewsDiagnosticsRowsTunnel)), findsOneWidget);
       expect(find.text(tr(Strings.globalNounsNoContent)), findsOneWidget);
+      // The re-read timer stops on its first tick after the page is gone (a
+      // functional widget has no dispose to cancel it in).
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('live tunnel log follows the newest file, re-read every second', (tester) async {
@@ -318,11 +323,11 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       });
       await tester.pump();
-      expect(tester.widget<SelectableText>(find.byType(SelectableText)).data, 'old line');
+      expect(logText(tester), 'old line');
       logs.files['/t/2000.log'] = 'new line\nsecond\n';
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 1200)));
       await tester.pump();
-      expect(tester.widget<SelectableText>(find.byType(SelectableText)).data, 'new line\nsecond');
+      expect(logText(tester), 'new line\nsecond');
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -335,7 +340,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       });
       await tester.pump();
-      expect(tester.widget<SelectableText>(find.byType(SelectableText)).data, 'first session');
+      expect(logText(tester), 'first session');
       expect(find.byTooltip(tr(Strings.globalActionsRemove)), findsNothing);
     });
   });
@@ -462,7 +467,7 @@ void main() {
     testWidgets('Changelog lists entries, issue rows link to GitHub', (tester) async {
       await pumpScreen(
         tester,
-        ChangelogScreen(build: '4000', fetcher: (url) async => '* Fix A (#12)\n* Fix B\nnot an entry'),
+        ChangelogScreen(buildNumber: '4000', fetcher: (url) async => '* Fix A (#12)\n* Fix B\nnot an entry'),
       );
       await tester.pump();
       await tester.pump();
