@@ -56,37 +56,40 @@ Widget _importTextScreen(BuildContext context) {
         else
           TextButton(onPressed: valid ? submit : null, child: DVText(tr(Strings.globalActionsImport))),
       ],
-      body: DVBox.scrollableList(
-        <Widget>[
-          DVText(tr(Strings.viewsAppToolbarImportTextCaption)),
-          // A filled, borderless, monospaced box, as upstream's text input.
-          Theme(
-            data: theme.copyWith(
-              inputDecorationTheme: InputDecorationTheme(
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                border: rounded,
-                enabledBorder: rounded,
-                focusedBorder: rounded,
+      // Centred across, top-aligned down, as PSForm: centring the scroll view
+      // itself left the box floating mid-screen.
+      body: DVBox.scrollableList(<Widget>[
+        DVBox(
+          DVBox.list(<Widget>[
+            DVText(tr(Strings.viewsAppToolbarImportTextCaption)),
+            // A filled, borderless, monospaced box, as upstream's text input.
+            Theme(
+              data: theme.copyWith(
+                inputDecorationTheme: InputDecorationTheme(
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  border: rounded,
+                  enabledBorder: rounded,
+                  focusedBorder: rounded,
+                ),
+                textTheme: theme.textTheme.copyWith(
+                  bodyLarge: theme.textTheme.bodyLarge?.copyWith(fontFamily: 'monospace', fontSize: 13),
+                ),
               ),
-              textTheme: theme.textTheme.copyWith(
-                bodyLarge: theme.textTheme.bodyLarge?.copyWith(fontFamily: 'monospace', fontSize: 13),
+              child: DVText(
+                text.value,
+                const DVModifier().input(
+                  label: tr(Strings.viewsAppToolbarImportTextTitle),
+                  hint: '[Interface]\nPrivateKey = …\n\n— or —\n\nclient\nremote vpn.example.com 1194',
+                  multiline: true,
+                  onChanged: (value) => text.value = value,
+                ),
               ),
             ),
-            child: DVText(
-              text.value,
-              const DVModifier().input(
-                label: tr(Strings.viewsAppToolbarImportTextTitle),
-                hint: '[Interface]\nPrivateKey = …\n\n— or —\n\nclient\nremote vpn.example.com 1194',
-                multiline: true,
-                onChanged: (value) => text.value = value,
-              ),
-            ),
-          ),
-        ],
-        spacing: 12,
-        modifier: const DVModifier().padding(16).maxWidth(720).centered(),
-      ),
+          ], spacing: 12),
+          const DVModifier().maxWidth(720).centered(),
+        ),
+      ], modifier: const DVModifier().padding(16)),
     ),
   );
 }

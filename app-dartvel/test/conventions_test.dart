@@ -99,7 +99,7 @@ void main() {
     final texts = <File>[
       ...sources,
       for (final dir in <String>['docs', 'tool', 'test'])
-        ...Directory(dir).listSync(recursive: true).whereType<File>().where((f) => !f.path.endsWith('.jsonl')),
+        ...Directory(dir).listSync(recursive: true).whereType<File>().where((f) => RegExp(r'\.(md|dart|ya?ml|txt|json|policy|c|h)$').hasMatch(f.path)),
       File('README.md'),
       File('pubspec.yaml'),
     ].where((f) => f.path != 'test/conventions_test.dart');
