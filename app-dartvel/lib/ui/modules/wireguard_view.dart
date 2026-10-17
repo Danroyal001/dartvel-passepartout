@@ -9,10 +9,10 @@ import '../../domain/ip_ranges.dart';
 import '../../l10n/app_strings.dart';
 import '../../l10n/strings.g.dart';
 import '../../platform/vpn_service.dart';
+import '../../dartvel_client/dartvel_client.dart';
 import '../kit.dart';
 import 'module_view.dart';
 import 'wireguard/wireguard_configuration.dart';
-import 'wireguard/wireguard_import.dart';
 import 'wireguard/wireguard_issues.dart';
 import 'wireguard/wireguard_rows.dart';
 
@@ -43,7 +43,6 @@ Widget? wireGuardSubpage(BuildContext context, ModuleViewArgs args, String secti
   return PSLongContentPage(
     title: field.title,
     text: field.text,
-    keyboardType: field.keyboardType,
     onChanged: field.onChanged,
     validate: check == null ? null : (text) => wireGuardFieldError(check, text),
   );
@@ -56,7 +55,6 @@ class const _WireGuardField({
   required final String text,
   required final ValueChanged<String> onChanged,
   final String? Function(String text)? preview,
-  final TextInputType? keyboardType,
   final WireGuardIssue? Function(String text)? check,
 }) {
   /// The field [section] names in [args]' module, or null when there is none.
@@ -108,7 +106,6 @@ List<_WireGuardField> _interfaceFields(ModuleViewArgs args, WireGuardConfigurati
         text: configuration.addressesText,
         preview: asNumberOfEntries,
         check: WireGuardValidation.addresses,
-        keyboardType: TextInputType.url,
         onChanged: (text) => args.onChanged(_current(args).withAddresses(text)),
       ),
       _WireGuardField(
@@ -117,7 +114,6 @@ List<_WireGuardField> _interfaceFields(ModuleViewArgs args, WireGuardConfigurati
         text: configuration.dnsServersText,
         preview: asNumberOfEntries,
         check: WireGuardValidation.dnsServers,
-        keyboardType: TextInputType.url,
         onChanged: (text) => args.onChanged(_current(args).withDnsServers(text)),
       ),
       _WireGuardField(
@@ -165,7 +161,6 @@ List<_WireGuardField> _peerFields(ModuleViewArgs args, WireGuardPeer peer, int i
       text: peer.allowedIPsText,
       preview: asNumberOfEntries,
       check: WireGuardValidation.allowedIPs,
-      keyboardType: TextInputType.url,
       onChanged: (text) => edit((peer) => peer.withAllowedIPs(text)),
     ),
   ];
@@ -195,7 +190,6 @@ List<Widget> _configurationSections(BuildContext context, ModuleViewArgs args, W
         label: 'MTU',
         value: configuration.mtuText,
         placeholder: _mtuPlaceholder,
-        keyboardType: TextInputType.number,
         error: issues['mtu'] == null ? null : wireGuardIssueText(issues['mtu']!),
         onChanged: (text) => args.onChanged(_current(args).withMtu(text)),
       ),
@@ -254,7 +248,6 @@ Widget _peerSection(
           label: tr(Strings.globalNounsKeepAlive),
           value: peer.keepAliveText,
           placeholder: _keepAlivePlaceholder,
-          keyboardType: TextInputType.number,
           error: keepAliveIssue == null ? null : wireGuardIssueText(keepAliveIssue),
           onChanged: (text) {
             final current = _current(args);

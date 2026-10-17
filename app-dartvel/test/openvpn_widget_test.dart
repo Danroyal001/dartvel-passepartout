@@ -1,20 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0
 // Copyright 2026 SigmaDev
 
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/domain/profile.dart';
 import 'package:passepartout/l10n/strings.g.dart';
 import 'package:passepartout/platform/vpn_service_native.dart';
+import 'package:passepartout/dartvel_client/dartvel_client.dart';
 import 'package:passepartout/ui/kit.dart';
 import 'package:passepartout/ui/modules/module_view.dart';
-import 'package:passepartout/ui/modules/openvpn/openvpn_content_screen.dart';
-import 'package:passepartout/ui/modules/openvpn/openvpn_credentials_screen.dart';
 import 'package:passepartout/ui/modules/openvpn/openvpn_formatters.dart';
 import 'package:passepartout/ui/modules/openvpn/openvpn_import_dialog.dart';
-import 'package:passepartout/ui/modules/openvpn/openvpn_remotes_screen.dart';
 import 'package:passepartout/ui/modules/openvpn_view.dart';
 
 Widget _buildTestApp(Widget child) => MaterialApp(
@@ -58,7 +55,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final path = '/home/sigmadev/passepartout/partout/tests/openvpn/fixtures/protonvpn.ovpn';
+      final path = '../partout/tests/openvpn/fixtures/protonvpn.ovpn';
       final text = File(path).readAsStringSync();
       final module = await engine.importModule(text);
 

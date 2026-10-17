@@ -64,7 +64,7 @@ Future<({List<int> bytes, int exported, int skipped})> exportAllProfilesArchive(
 
 void _tell(BuildContext context, String message) {
   if (!context.mounted) return;
-  ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(message)));
+  ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: DVText(message)));
 }
 
 /// "Import from file" with zip support: each picked .zip is unpacked, other

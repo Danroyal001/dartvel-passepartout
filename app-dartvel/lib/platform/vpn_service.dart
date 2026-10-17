@@ -39,6 +39,13 @@ abstract class VpnService {
   Future<void> connect(TunnelProfile profile, {required void Function(TunnelEvent) onStatus});
   Future<void> disconnect();
 
+  /// Undoes network changes a crashed or killed tunnel helper left behind (on
+  /// Linux the kill switch, which would otherwise keep blocking traffic).
+  /// Safe to call when nothing is left. A no-op on targets without a helper.
+  /// Throws [StateError] when the helper could not restore (or was not
+  /// authorized to).
+  Future<void> restoreNetwork();
+
   /// Partout's version (`partout_version()`), or a plain note where the
   /// engine is not linked into this target.
   Future<String> engineVersion();

@@ -199,7 +199,7 @@ void main() {
 
   group('builders round-trip upstream JSON', () {
     test('DNS builder() reads domainName and searchDomains like upstream', () {
-      final builder = DnsBuilder.fromJson(<String, dynamic>{
+      final builder = DnsBuilder.fromModule(<String, dynamic>{
         'id': 'X',
         'protocolType': <String, dynamic>{'type': 'https', 'url': 'https://doh.com/query'},
         'servers': <dynamic>['1.1.1.1'],
@@ -216,7 +216,7 @@ void main() {
     });
 
     test('DNS legacy protocol encoding is read', () {
-      final builder = DnsBuilder.fromJson(<String, dynamic>{
+      final builder = DnsBuilder.fromModule(<String, dynamic>{
         'id': 'X',
         'protocolType': <String, dynamic>{'tls': <String, dynamic>{'hostname': 'dot.com'}},
         'servers': <dynamic>[],
@@ -226,7 +226,7 @@ void main() {
     });
 
     test('HTTP proxy endpoints split at the last colon', () {
-      final builder = HttpProxyBuilder.fromJson(<String, dynamic>{
+      final builder = HttpProxyBuilder.fromModule(<String, dynamic>{
         'id': 'X',
         'proxy': '10.10.10.10:1080',
         'secureProxy': 'fe80::1:8080',
@@ -241,7 +241,7 @@ void main() {
     });
 
     test('IP builder loads the first subnet of each family', () {
-      final builder = IpBuilder.fromJson(<String, dynamic>{
+      final builder = IpBuilder.fromModule(<String, dynamic>{
         'id': 'X',
         'ipv4': <String, dynamic>{
           'subnets': <dynamic>['10.20.30.40/16'],
@@ -257,7 +257,7 @@ void main() {
     });
 
     test('on-demand SSIDs keep order and state', () {
-      final builder = OnDemandBuilder.fromJson(<String, dynamic>{
+      final builder = OnDemandBuilder.fromModule(<String, dynamic>{
         'id': 'X',
         'policy': 'excluding',
         'withSSIDs': <String, dynamic>{'One': true, 'Two': false},

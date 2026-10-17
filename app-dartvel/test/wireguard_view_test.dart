@@ -197,11 +197,32 @@ void main() {
     expect(base64.decode(privateKey), hasLength(32));
   });
 
+  testWidgets('the public key row follows the private key it is given', (tester) async {
+    const privateKey = '4hBza7JtPKZFKwqtEmDR0iZyru1kqpQta/DRduMbHQw=';
+    final publicKey = await engine.wireGuardPublicKey(privateKey);
+    expect(base64.decode(publicKey), hasLength(32));
+    Future<void> pump(String key) async {
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: WireGuardPublicKeyRow(privateKey: key))));
+      await tester.pumpAndSettle();
+    }
+
+    await pump(privateKey);
+    expect(find.text(publicKey), findsOneWidget);
+    expect(find.byIcon(Icons.copy), findsOneWidget);
+    await pump('');
+    expect(find.text(publicKey), findsNothing);
+    expect(find.byIcon(Icons.copy), findsNothing);
+    await pump('not a key');
+    expect(find.text(publicKey), findsNothing);
+    await pump(privateKey);
+    expect(find.text(publicKey), findsOneWidget);
+  });
+
   // Screenshots for review: WG_SHOT_DIR=/some/dir flutter test test/wireguard_view_test.dart
   final shotDir = io.Platform.environment['WG_SHOT_DIR'];
   testWidgets('screenshot', skip: shotDir == null, (tester) async {
     await tester.runAsync(() async {
-      final fonts = '${io.Platform.environment['FLUTTER_ROOT'] ?? '/home/sigmadev/snap/flutter/common/flutter'}/bin/cache/artifacts/material_fonts';
+      final fonts = '${io.Platform.environment['FLUTTER_ROOT'] ?? io.File(io.Platform.resolvedExecutable).parent.parent.parent.parent.parent.path}/bin/cache/artifacts/material_fonts';
       Future<void> load(String family, List<String> files) async {
         final loader = FontLoader(family);
         for (final file in files) {

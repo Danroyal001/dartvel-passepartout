@@ -9,123 +9,112 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/strings.g.dart';
+import '../../../dartvel_client/dartvel_client.dart';
 import '../../kit.dart';
 import 'module_builder_cache.dart';
 
-class EditableListSection<T> extends StatelessWidget {
-  const EditableListSection({
-    super.key,
-    required this.header,
-    required this.addTitle,
-    required this.items,
-    required this.onChanged,
-    required this.emptyValue,
-    required this.isEmptyValue,
-    required this.itemBuilder,
-    this.footer,
-  });
-
-  final String? header;
-  final String? footer;
-  final String addTitle;
-  final List<ListItem<T>> items;
-  final ValueChanged<List<ListItem<T>>> onChanged;
-  final T Function() emptyValue;
-  final bool Function(T) isEmptyValue;
-
-  /// The row content for [item]; call the setter to replace its value.
-  final Widget Function(BuildContext context, ListItem<T> item, ValueChanged<T> setValue) itemBuilder;
-
-  bool get _canAdd => items.isEmpty || !isEmptyValue(items.last.value);
-
-  void _remove(ListItem<T> item) => onChanged(<ListItem<T>>[...items]..removeWhere((other) => other.id == item.id));
-
-  void _set(ListItem<T> item, T value) =>
-      onChanged(<ListItem<T>>[for (final other in items) other.id == item.id ? other.copyWith(value) : other]);
-
-  @override
-  Widget build(BuildContext context) => PSSection(
-        header: header,
-        footer: footer,
-        children: <Widget>[
-          for (final item in items)
-            Dismissible(
-              key: ValueKey<String>('${header ?? ''}/item/${item.id}'),
-              direction: .endToStart,
-              background: Container(
-                color: PSColors.error,
-                alignment: .centerRight,
-                padding: const .only(right: 16),
-                child: Text(tr(Strings.globalActionsDelete), style: const TextStyle(color: Colors.white)),
-              ),
-              onDismissed: (_) => _remove(item),
-              child: Row(children: <Widget>[
-                IconButton(
-                  tooltip: tr(Strings.globalActionsDelete),
-                  icon: const Icon(Icons.remove_circle, color: PSColors.error),
-                  onPressed: () => _remove(item),
-                ),
-                Expanded(child: itemBuilder(context, item, (value) => _set(item, value))),
-                const SizedBox(width: 16),
-              ]),
-            ),
-          PSRow(
-            title: addTitle,
-            leading: Icon(Icons.add_circle, color: _canAdd ? PSColors.active : Theme.of(context).disabledColor),
-            onTap: _canAdd ? () => onChanged(<ListItem<T>>[...items, ListItem<T>(emptyValue())]) : null,
+/// The list section itself, by index: row [i] is drawn by [rowBuilder] and
+/// keyed by `rowIds[i]` (a stable [ListItem.id]); [onAdd] is null while
+/// adding is disabled. [editableListSection] is the typed front over
+/// [ListItem]s.
+@DVFunctionalWidget()
+Widget _editableListSection(
+  BuildContext context, {
+  String? header,
+  String? footer,
+  required String addTitle,
+  required List<int> rowIds,
+  required Widget Function(BuildContext context, int index) rowBuilder,
+  required ValueChanged<int> onRemove,
+  required VoidCallback? onAdd,
+}) {
+  final delete = tr(Strings.globalActionsDelete);
+  return PSSection(
+    header: header,
+    footer: footer,
+    children: <Widget>[
+      for (var i = 0; i < rowIds.length; i++)
+        Dismissible(
+          key: ValueKey<String>('${header ?? ''}/item/${rowIds[i]}'),
+          direction: .endToStart,
+          background: DVBox(
+            DVText(delete, const DVModifier().color(Colors.white)),
+            const DVModifier().backgroundColor(PSColors.error).paddingOnly(right: 16).align(Alignment.centerRight),
           ),
-        ],
-      );
-}
-
-/// A borderless text field for one list row, kept in sync with [value]
-/// (`ThemeTextField("", text:, placeholder:)` with hidden label).
-class ListItemTextField extends StatefulWidget {
-  const ListItemTextField({
-    super.key,
-    required this.value,
-    required this.onChanged,
-    this.placeholder,
-    this.keyboardType,
-    this.semanticLabel,
-  });
-
-  final String value;
-  final ValueChanged<String> onChanged;
-  final String? placeholder;
-  final TextInputType? keyboardType;
-  final String? semanticLabel;
-
-  @override
-  State<ListItemTextField> createState() => _ListItemTextFieldState();
-}
-
-class _ListItemTextFieldState extends State<ListItemTextField> {
-  late final TextEditingController _controller = TextEditingController(text: widget.value);
-
-  @override
-  void didUpdateWidget(ListItemTextField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.value != _controller.text) _controller.text = widget.value;
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => TextField(
-        controller: _controller,
-        autofocus: widget.value.isEmpty,
-        autocorrect: false,
-        keyboardType: widget.keyboardType,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          hintText: widget.placeholder,
-          semanticCounterText: widget.semanticLabel,
+          onDismissed: (_) => onRemove(i),
+          child: DVBox.row(
+            <Widget>[
+              DVIconButton(icon: Icons.remove_circle, color: PSColors.error, label: delete, onPressed: () => onRemove(i)),
+              Expanded(child: rowBuilder(context, i)),
+            ],
+            spacing: 0,
+            crossAlign: .center,
+            modifier: const DVModifier().paddingOnly(right: 16),
+          ),
         ),
-        onChanged: widget.onChanged,
+      PSRow(
+        title: addTitle,
+        leading: Icon(Icons.add_circle, color: onAdd != null ? PSColors.active : Theme.of(context).disabledColor),
+        onTap: onAdd,
+      ),
+    ],
+  );
+}
+
+/// [EditableListSection] over [items]: reports the whole new list on every
+/// add, removal and edit. [itemBuilder] draws one row; calling its setter
+/// replaces that row's value.
+Widget editableListSection<T>({
+  Key? key,
+  String? header,
+  String? footer,
+  required String addTitle,
+  required List<ListItem<T>> items,
+  required ValueChanged<List<ListItem<T>>> onChanged,
+  required T Function() emptyValue,
+  required bool Function(T value) isEmptyValue,
+  required Widget Function(BuildContext context, ListItem<T> item, ValueChanged<T> setValue) itemBuilder,
+}) {
+  final canAdd = items.isEmpty || !isEmptyValue(items.last.value);
+  return EditableListSection(
+    key: key,
+    header: header,
+    footer: footer,
+    addTitle: addTitle,
+    rowIds: <int>[for (final item in items) item.id],
+    rowBuilder: (context, index) {
+      final item = items[index];
+      return itemBuilder(
+        context,
+        item,
+        (value) => onChanged(<ListItem<T>>[for (final other in items) other.id == item.id ? other.copyWith(value) : other]),
       );
+    },
+    onRemove: (index) {
+      final id = items[index].id;
+      onChanged(<ListItem<T>>[...items]..removeWhere((other) => other.id == id));
+    },
+    onAdd: canAdd ? () => onChanged(<ListItem<T>>[...items, ListItem<T>(emptyValue())]) : null,
+  );
+}
+
+/// A borderless text field for one list row, following [value]
+/// (`ThemeTextField("", text:, placeholder:)` with hidden label: the label
+/// names the field to screen readers only).
+@DVFunctionalWidget()
+Widget _listItemTextField(
+  BuildContext context, {
+  required String value,
+  required ValueChanged<String> onChanged,
+  String? placeholder,
+  String? semanticLabel,
+}) {
+  final theme = Theme.of(context);
+  return Theme(
+    data: theme.copyWith(inputDecorationTheme: const InputDecorationTheme(border: InputBorder.none)),
+    child: Semantics(
+      label: semanticLabel,
+      child: DVText(value, const DVModifier().input(hint: placeholder, onChanged: onChanged)),
+    ),
+  );
 }

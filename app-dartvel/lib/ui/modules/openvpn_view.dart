@@ -3,12 +3,11 @@
 
 import 'package:flutter/material.dart';
 import '../../l10n/strings.g.dart';
+import '../../dartvel_client/dartvel_client.dart';
 import '../kit.dart';
 import 'module_view.dart';
-import 'openvpn/openvpn_credentials_screen.dart';
 import 'openvpn/openvpn_formatters.dart';
 import 'openvpn/openvpn_import_dialog.dart';
-import 'openvpn/openvpn_remotes_screen.dart';
 
 /// OpenVPN module sections.
 /// Matches upstream `OpenVPNView` and `OpenVPNView+Configuration.swift`.
@@ -167,19 +166,16 @@ List<Widget> openVPNSections(BuildContext context, ModuleViewArgs args) {
       PSRow(
         title: tr(Strings.globalNounsServers),
         value: dnsServers.join(', '),
-        selectable: true,
       ),
     if (dnsDomain != null && dnsDomain.isNotEmpty)
       PSRow(
         title: tr(Strings.globalNounsDomain),
         value: dnsDomain,
-        selectable: true,
       ),
     if (searchDomains != null && searchDomains.isNotEmpty)
       PSRow(
         title: tr(Strings.entitiesDnsSearchDomains),
         value: searchDomains.join(', '),
-        selectable: true,
       ),
   ];
   if (dnsRows.isNotEmpty) {
@@ -201,25 +197,21 @@ List<Widget> openVPNSections(BuildContext context, ModuleViewArgs args) {
       PSRow(
         title: 'HTTP',
         value: httpProxy.toString(),
-        selectable: true,
       ),
     if (httpsProxy != null)
       PSRow(
         title: 'HTTPS',
         value: httpsProxy.toString(),
-        selectable: true,
       ),
     if (pacUrl != null && pacUrl.isNotEmpty)
       PSRow(
         title: 'PAC',
         value: pacUrl,
-        selectable: true,
       ),
     if (proxyBypass != null && proxyBypass.isNotEmpty)
       PSRow(
         title: tr(Strings.entitiesHttpProxyBypassDomains),
         value: proxyBypass.join(', '),
-        selectable: true,
       ),
   ];
   if (proxyRows.isNotEmpty) {
@@ -465,7 +457,6 @@ List<Widget> _buildIpRows(
       PSRow(
         title: tr(Strings.globalNounsAddress),
         value: address,
-        selectable: true,
       ),
     );
   }
@@ -476,7 +467,6 @@ List<Widget> _buildIpRows(
       PSRow(
         title: tr(Strings.globalNounsGateway),
         value: gateway,
-        selectable: true,
       ),
     );
   }

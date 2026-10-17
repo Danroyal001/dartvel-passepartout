@@ -29,5 +29,7 @@ class const UnavailableVpnService() implements VpnService {
   @override
   Future<void> disconnect() async {}
   @override
+  Future<void> restoreNetwork() async {}
+  @override
   Future<String> engineVersion() async => 'Not available on this target';
 }

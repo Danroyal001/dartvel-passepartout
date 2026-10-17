@@ -26,12 +26,9 @@ dependencies:
   archive: ^4.0.0
   image: ^4.3.0
   zxing2: ^0.2.4
-  dartvel_core: 
-    path: /home/sigmadev/dartvel_dev/packages/dartvel_core
-  dartvel_shelf: 
-    path: /home/sigmadev/dartvel_dev/packages/dartvel_shelf
-  dartvel_flutter: 
-    path: /home/sigmadev/dartvel_dev/packages/dartvel_flutter
+  dartvel_core: ^0.13.5
+  dartvel_shelf: ^0.13.5
+  dartvel_flutter: ^0.13.5
   flutter_web_plugins:
     sdk: flutter
 
@@ -41,17 +38,7 @@ dev_dependencies:
   ffigen: ^20.1.1
   yaml: ^3.1.2
   lints: ^4.0.0
-  dartvel_cli: 
-    path: /home/sigmadev/dartvel_dev/packages/dartvel_cli
-dependency_overrides:
-  dartvel_core:
-    path: /home/sigmadev/dartvel_dev/packages/dartvel_core
-  dartvel_shelf:
-    path: /home/sigmadev/dartvel_dev/packages/dartvel_shelf
-  dartvel_flutter:
-    path: /home/sigmadev/dartvel_dev/packages/dartvel_flutter
-  dartvel_cli:
-    path: /home/sigmadev/dartvel_dev/packages/dartvel_cli
+  dartvel_cli: ^0.13.5
 
 flutter:
   uses-material-design: true
@@ -88,6 +75,10 @@ dartvel:
   pwa:
     name: Dartvel VPN
     shortName: Dartvel VPN
+    description: Import, edit and connect WireGuard and OpenVPN profiles.
+    icon: assets/app_icon.png
+    themeColor: '#515D70'
+    backgroundColor: '#FFF8EE'
 
   desktop:
     name: Dartvel VPN
@@ -102,4 +93,5 @@ dartvel:
   seo:
     siteName: Dartvel VPN
     defaultTitle: Profiles
-    defaultDescription: A Dartvel application
+    defaultDescription: Import, edit and connect WireGuard and OpenVPN profiles.
+    favicon: assets/favicon.png

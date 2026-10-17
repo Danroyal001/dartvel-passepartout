@@ -12,15 +12,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/dartvel_client/dartvel_client.dart';
 import 'package:passepartout/domain/profile.dart';
 import 'package:passepartout/l10n/strings.g.dart';
-import 'package:passepartout/main.dart';
+import 'package:passepartout/app.dart';
+import 'package:passepartout/dartvel_client/application.g.dart';
 import 'package:passepartout/platform/vpn_service.dart';
 import 'package:passepartout/platform/vpn_service_native.dart';
 import 'package:passepartout/state/app_state.dart';
 import 'package:passepartout/state/profile_draft.dart';
 import 'package:passepartout/ui/kit.dart';
-import 'package:passepartout/ui/modules/module_screen.dart';
-import 'package:passepartout/ui/modules/openvpn/openvpn_credentials_screen.dart';
-import 'package:passepartout/ui/modules/openvpn/openvpn_remotes_screen.dart';
 import 'package:passepartout/ui/modules/wireguard/wireguard_configuration.dart';
 import 'package:passepartout/ui/modules/wireguard/wireguard_import.dart';
 
@@ -109,7 +107,9 @@ void main() {
     for (final MapEntry(key: name, value: (title, text)) in wireGuardPages.entries) {
       DV.Navigation.navigate(section(wireGuard, name));
       await settle(tester);
-      expect(find.text(title), findsOneWidget, reason: name);
+      // The title heads the page and labels the editor.
+      expect(find.descendant(of: find.byType(AppBar), matching: find.text(title)), findsOneWidget, reason: name);
+      expect(find.widgetWithText(TextField, title), findsOneWidget, reason: name);
       expect(find.byType(PSLongContentPage), findsOneWidget, reason: name);
       expect(find.widgetWithText(TextField, text), findsOneWidget, reason: name);
       expect(find.byType(BackButton), findsOneWidget, reason: name);

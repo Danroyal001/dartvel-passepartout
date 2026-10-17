@@ -1,7 +1,8 @@
 # Tunnel integration
 
 Linux is implemented through a separate Dart AOT helper, `partout-tunnel`.
-The application starts `pkexec /usr/local/libexec/passepartout/partout-tunnel PROFILE.json`.
+The application starts `pkexec /usr/local/libexec/passepartout/partout-tunnel --stdin` and writes
+the profile on its stdin (see Protocol).
 `canConnect` requires Linux, an executable helper and pkexec in PATH. Authentication,
 missing libraries and network privileges can still fail at runtime; availability is
 not a promise of successful connection. `PARTOUT_TUNNEL_HELPER` overrides the app's
@@ -10,14 +11,16 @@ Web, Android, Windows and Apple connection implementations remain pending.
 
 ## Build and install (owner only)
 
-From `app-dartvel`, resolve dependencies with `flutter pub get`, then run:
+Build the engine first (docs/BUILD.md). From `app-dartvel`, resolve dependencies with
+`flutter pub get`, then run:
 
 ```sh
-~/heavy.sh bash tool/tunnel_helper/build.sh
+dart run tool/tunnel_helper/build.dart            # output: build/tunnel-helper
 ```
 
-The default output is `/tmp/pp-tunnel-build`. Override `TUNNEL_OUTPUT`,
-`PARTOUT_SOURCE`, `PARTOUT_LIB_DIR`, and `PARTOUT_OPENSSL_DIR` for another local build.
+Paths default to this checkout (`../partout`); override `PARTOUT_SOURCE`,
+`PARTOUT_LIB_DIR` and `PARTOUT_OPENSSL_DIR` for another engine build, or pass an output
+directory as the first argument.
 The C bridge requires the matching upstream `partout.h`; it is not a Flutter native
 folder or platform shell. The executable is compiled with `dart compile exe`.
 The bridge loads **only** `libpartout.so` beside the helper. Its dependencies must
@@ -32,8 +35,8 @@ installation block (this worker has not run it):
 ```sh
 sudo sh -eu <<'INSTALL'
 install -d -o root -g root -m 0755 /usr/local/libexec/passepartout
-install -o root -g root -m 0755 /tmp/pp-tunnel-build/partout-tunnel /usr/local/libexec/passepartout/
-install -o root -g root -m 0644 /tmp/pp-tunnel-build/*.so* /usr/local/libexec/passepartout/
+install -o root -g root -m 0755 build/tunnel-helper/partout-tunnel /usr/local/libexec/passepartout/
+install -o root -g root -m 0644 build/tunnel-helper/*.so* /usr/local/libexec/passepartout/
 install -o root -g root -m 0644 tool/tunnel_helper/io.partout.tunnel.policy /usr/share/polkit-1/actions/
 INSTALL
 ```
@@ -56,17 +59,33 @@ Reinstallation removes file capabilities; never silently reapply them.
 
 ## Protocol and ownership
 
-The profile goes through a unique mode-0700 temporary directory and mode-0600 file;
-it never appears in arguments, environment or logs. The helper reads it before
-sending `{"type":"ready","pid":123}`. The app deletes the directory after that
-acknowledgement, on startup failure or timeout. A killed app cannot guarantee temp
-cleanup, so OS temp cleanup remains necessary after abrupt termination.
+The helper runs as root and takes **no path argument**: it cannot be pointed at a file.
+The app writes the profile (which holds the WireGuard private key) as the first stdin
+line, at most 4 MiB (`kMaxHelperProfileBytes`); a longer line, a missing line or a line
+that is not a JSON object is refused. The profile is never written to disk and never
+appears in arguments, environment or logs. Failures report only a fixed code
+(`profile_missing`, `profile_too_large`, `profile_invalid`, `profile_timeout`,
+`network_setup`, `cleanup_failed` and `helper_failure` carry the exception *type* as
+`detail`), never any exception text or part of the input. Later stdin lines are commands
+(`stop`); when stdin closes the helper stops too, and it releases stdin so it exits.
+
+`partout-tunnel --cleanup` removes routing rules, the nftables kill switch and DNS changes a
+killed helper left behind, and answers `{"type":"network","state":"restored"}`. The helper
+sends the same event after it undid its own changes on a normal stop or a failure. The app
+runs `--cleanup` (through pkexec) only when a helper that had started (`ready`) ended
+without that event, and when a stop cannot be confirmed: not after a refused pkexec prompt.
+Without it the kill switch, which fails closed, would keep blocking traffic until the next
+connect. Settings > Diagnostics also offers "Restore network" for the case where the app
+itself was killed together with the helper.
 
 Stdout contains JSON lines with `type`: `ready`, `status` (disconnected/connecting/
-connected/disconnecting), `data` (received/sent byte totals), `error` (code), `log`
-(level/message), and `exit` (native completion code). Stderr is captured separately.
-The app maps native events to `TunnelEvent`. Ready means profile consumed/helper
-started; connected is exclusively a native status, never a fabricated success.
+connected/disconnecting), `data` (received/sent byte totals), `error` (code, detail),
+`log` (level/message), `exit` (native completion code) and `network` (restored). Stderr is
+captured separately. `lib/platform/tunnel/tunnel_protocol.dart` is the only code that reads
+or writes these lines; the app sees the sealed `HelperEvent` types. Ready means profile
+consumed and helper started. **Connected** is the engine's status, held back by the helper
+(`HelperStatusGate`) until the tun device has its addresses, routes and DNS: before that
+nothing goes through the tunnel, so the app must not say it is connected.
 
 Partout blocks in daemon mode on a pthread. Bindings have a NULL controller,
 selecting Linux's default tun implementation as the upstream CLI does. Event-only
@@ -93,13 +112,26 @@ private protocol data redacted. Rotation/deletion UX is a follow-up.
 
 ## Verification
 
-`flutter test test/tunnel_process_test.dart` covers strict event validation, real
-fake-child lifecycle, byte/status delivery, stderr, private modes, file deletion,
-duplicate start, early exit, startup timeout and graceful stop. C is compiled with
-warnings as errors. `dart run tool/tunnel_helper/probe.dart` imports the WireGuard
-fixture, replaces its endpoint with 127.0.0.1:51820 and runs the real helper for
-three seconds without elevation. It is a connection *attempt*, not a VPN handshake.
-See PROGRESS-pp-tunnel.md for observed runtime results and host restrictions.
+`flutter test test/tunnel_process_test.dart test/helper_input_test.dart
+test/linux_network_plan_test.dart` covers the typed event protocol, the connected gate,
+cleanup decisions, stdin profile delivery and size cap, no temp file, fixed error codes,
+duplicate start, early exit, startup timeout and graceful stop (the fake helpers are Dart
+scripts). C is compiled with warnings as errors.
+
+`dart run tool/netns_test/run.dart` (root or sudo; iproute2, nftables, wireguard-tools,
+iputils-ping; kernel WireGuard or `wireguard-go` for the server end) runs the **real helper
+and engine** against a WireGuard server in network namespaces, with the profile piped on
+stdin and no key file written. It checks: handshake and `connected`; the tun device
+addressed by the helper; ping through the tunnel and encrypted bytes counted on the server;
+data events; stop restores (no rules, no tun device); an excluded route leaves outside the
+tunnel; the kill switch drops outside traffic, still drops it after the helper is killed
+with SIGKILL, and `--cleanup` lets it through again; the host's rules, routes and nftables
+tables are unchanged. The run of 2026-10-15 passed all 25 checks
+(docs/evidence/netns-2026-10-15.txt; server end wireguard-go, as that kernel had no
+WireGuard module). Not covered there: pkexec/polkit prompts, systemd-resolved DNS, IPv6.
+
+`dart run tool/tunnel_helper/probe.dart` runs the helper unprivileged against a dead
+endpoint for three seconds: a connection *attempt*, not a VPN handshake.
 
 ## Android implementation plan and framework gap
 
@@ -163,7 +195,20 @@ Lead should record/test this gap, implement target generation rather than editin
 folders, then verify on signed Apple devices (simulator/server builds cannot establish
 this parity). Test consent, on-demand, reconnect, app termination and extension stop.
 
-Recorded on this host: both `tool/tunnel_helper/probe-stop.jsonl` and
-`probe-sigterm.jsonl` show native connecting, tun creation denied (`tunNotAvailable`),
-and clean native exit 0 after the respective shutdown path. No successful handshake,
-privileged routing/DNS restoration, or polkit prompt was tested on this server.
+The recorded `tool/tunnel_helper/probe-stop.jsonl` and `probe-sigterm.jsonl` are older
+unprivileged probe runs (tun creation denied, clean exit). The privileged end-to-end run is
+the netns test above.
+
+## Known limits of the Linux network plan
+
+- **Endpoint bypass:** a routing rule sends traffic to the endpoint's UDP port outside the
+  tunnel (encrypted packets must not loop into it). Any local process can therefore send UDP
+  to `endpoint:port` without the tunnel, even with the kill switch on.
+- **Containers and VMs:** the kill switch hooks the nftables `output` chain only. Traffic
+  forwarded for containers, VMs or network namespaces is not covered and can leave through
+  the physical interface while the tunnel is down.
+- **IPv6:** a profile with only IPv4 addresses routes no IPv6 through the tunnel. Without
+  the kill switch, IPv6 traffic goes out the physical interface (a leak). Turn the kill
+  switch on ("Enforce tunnel") to block it.
+- **resolv.conf:** without systemd-resolved the helper rewrites `/etc/resolv.conf` (backup
+  restored on stop); if that path is a symlink, the target is written through the link.

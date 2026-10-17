@@ -183,7 +183,7 @@ void main() {
     expect(configuration.canAddPeer, isTrue);
     final added = WireGuardConfiguration(module: configuration.addingPeer());
     expect(added.peers, hasLength(2));
-    expect(added.peers[1].json, <String, dynamic>{'publicKey': '', 'allowedIPs': <dynamic>[]});
+    expect(added.peers[1].value, <String, dynamic>{'publicKey': '', 'allowedIPs': <dynamic>[]});
     expect(added.canAddPeer, isFalse);
     expect(added.addingPeer().json, added.module.json);
     final removed = WireGuardConfiguration(module: added.removingPeer(0));
@@ -191,8 +191,8 @@ void main() {
   });
 
   test('IPv6 endpoints stored unbracketed show in wg-quick form', () {
-    expect(const WireGuardPeer(json: <String, dynamic>{'endpoint': '1:2:3::4:12345'}).endpoint, '[1:2:3::4]:12345');
-    expect(const WireGuardPeer(json: <String, dynamic>{'endpoint': '1.2.3.4:5'}).endpoint, '1.2.3.4:5');
+    expect(const WireGuardPeer(value: <String, dynamic>{'endpoint': '1:2:3::4:12345'}).endpoint, '[1:2:3::4]:12345');
+    expect(const WireGuardPeer(value: <String, dynamic>{'endpoint': '1.2.3.4:5'}).endpoint, '1.2.3.4:5');
   });
 
   test('key generation gives a base64 32-byte key and a derivable public key', () async {

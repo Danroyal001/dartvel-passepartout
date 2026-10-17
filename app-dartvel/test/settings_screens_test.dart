@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passepartout/dartvel_client/dartvel_client.dart';
+import 'package:passepartout/l10n/app_strings.dart';
 import 'package:passepartout/l10n/strings.g.dart';
 import 'package:passepartout/platform/vpn_service.dart';
 import 'package:passepartout/platform/vpn_service_stub.dart';
@@ -15,10 +16,7 @@ import 'package:passepartout/state/app_log.dart';
 import 'package:passepartout/state/app_state.dart';
 import 'package:passepartout/state/profile_draft.dart';
 import 'package:passepartout/ui/kit.dart';
-import 'package:passepartout/ui/settings/about_screen.dart';
 import 'package:passepartout/ui/settings/diagnostics_screen.dart';
-import 'package:passepartout/ui/settings/preferences_screen.dart';
-import 'package:passepartout/ui/settings/settings_screen.dart';
 import 'package:passepartout/ui/settings/settings_support.dart';
 
 /// main.dart's init order, without the app.
@@ -40,6 +38,10 @@ Future<void> pumpScreen(WidgetTester tester, Widget screen) async {
 Credits upstreamCredits() => Credits.fromJson(
     jsonDecode(File('assets/credits/credits.json').readAsStringSync()) as Map<String, dynamic>);
 
+/// The log text [LiveLogScreen] shows.
+String logText(WidgetTester tester) =>
+    tester.widget<DVText>(find.descendant(of: find.byType(SingleChildScrollView), matching: find.byType(DVText))).text;
+
 /// In-memory tunnel log files for [TunnelLogAccess].
 class MemoryTunnelLogs {
   final Map<String, String> files = <String, String>{};
@@ -49,6 +51,30 @@ class MemoryTunnelLogs {
         readFile: (path) async => files[path] ?? (throw ArgumentError('Not a tunnel log')),
         deleteFiles: (paths) async => paths.forEach(files.remove),
       );
+}
+
+/// A VpnService that only answers what Diagnostics asks: whether this target
+/// connects, and "restore network" (counted; throwing [error] when given).
+class FakeRestoreVpn implements VpnService {
+  FakeRestoreVpn({this.canConnect = true, this.error});
+
+  @override
+  final bool canConnect;
+
+  final Object? error;
+  int restores = 0;
+
+  @override
+  String? get connectUnavailableReason => canConnect ? null : 'No tunnel on this target';
+
+  @override
+  Future<void> restoreNetwork() async {
+    restores++;
+    if (error != null) throw error!;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError('not used by Diagnostics');
 }
 
 void main() {
@@ -162,6 +188,8 @@ void main() {
   });
 
   group('DiagnosticsScreen', () {
+    setUp(() => VpnService.instance = FakeRestoreVpn(canConnect: false));
+
     testWidgets('shows upstream sections and logging toggles', (tester) async {
       await pumpScreen(tester, DiagnosticsScreen(tunnelLogs: MemoryTunnelLogs().access));
       for (final key in <DVTranslationKey>[
@@ -218,13 +246,53 @@ void main() {
     });
   });
 
+  group('Diagnostics restore network', () {
+    testWidgets('is hidden where this target cannot connect', (tester) async {
+      final vpn = FakeRestoreVpn(canConnect: false);
+      VpnService.instance = vpn;
+      await pumpScreen(tester, DiagnosticsScreen(tunnelLogs: MemoryTunnelLogs().access));
+      await tester.scrollUntilVisible(find.text(tr(Strings.viewsDiagnosticsReportIssueTitle)), 200);
+      expect(find.text(AppStrings.restoreNetwork), findsNothing);
+      expect(find.text(AppStrings.restoreNetworkFooter), findsNothing);
+      expect(vpn.restores, 0);
+    });
+
+    testWidgets('restores once and confirms with a snack bar', (tester) async {
+      final vpn = FakeRestoreVpn();
+      VpnService.instance = vpn;
+      await pumpScreen(tester, DiagnosticsScreen(tunnelLogs: MemoryTunnelLogs().access));
+      await tester.scrollUntilVisible(find.text(AppStrings.restoreNetworkFooter), 200);
+      expect(find.text(AppStrings.restoreNetwork), findsOneWidget);
+      expect(find.byTooltip(AppStrings.restoreNetwork), findsOneWidget);
+      await tester.tap(find.text(AppStrings.restoreNetwork));
+      await tester.pumpAndSettle();
+      expect(vpn.restores, 1);
+      expect(find.text(AppStrings.networkRestored), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+    });
+
+    testWidgets('a failure shows the error alert, not the snack bar', (tester) async {
+      final vpn = FakeRestoreVpn(error: StateError('the helper was not authorized'));
+      VpnService.instance = vpn;
+      await pumpScreen(tester, DiagnosticsScreen(tunnelLogs: MemoryTunnelLogs().access));
+      await tester.scrollUntilVisible(find.text(AppStrings.restoreNetwork), 200);
+      await tester.tap(find.text(AppStrings.restoreNetwork));
+      await tester.pumpAndSettle();
+      expect(vpn.restores, 1);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text(tr(Strings.globalNounsError)), findsOneWidget);
+      expect(find.textContaining('the helper was not authorized'), findsOneWidget);
+      expect(find.text(AppStrings.networkRestored), findsNothing);
+    });
+  });
+
   group('LiveLogScreen', () {
     testWidgets('lists app log lines as selectable text and clears', (tester) async {
       AppLog.info('first line');
       AppLog.error('second line');
       await pumpScreen(tester, const LiveLogScreen());
       expect(find.text(tr(Strings.viewsDiagnosticsRowsApp)), findsOneWidget);
-      final text = tester.widget<SelectableText>(find.byType(SelectableText)).data!;
+      final text = logText(tester);
       expect(text, contains('[info] first line'));
       expect(text, contains('[error] second line'));
       expect(find.byTooltip('Copy'), findsOneWidget);
@@ -242,6 +310,10 @@ void main() {
       await tester.pump();
       expect(find.text(tr(Strings.viewsDiagnosticsRowsTunnel)), findsOneWidget);
       expect(find.text(tr(Strings.globalNounsNoContent)), findsOneWidget);
+      // The re-read timer stops on its first tick after the page is gone (a
+      // functional widget has no dispose to cancel it in).
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('live tunnel log follows the newest file, re-read every second', (tester) async {
@@ -251,11 +323,11 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       });
       await tester.pump();
-      expect(tester.widget<SelectableText>(find.byType(SelectableText)).data, 'old line');
+      expect(logText(tester), 'old line');
       logs.files['/t/2000.log'] = 'new line\nsecond\n';
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 1200)));
       await tester.pump();
-      expect(tester.widget<SelectableText>(find.byType(SelectableText)).data, 'new line\nsecond');
+      expect(logText(tester), 'new line\nsecond');
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -268,7 +340,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       });
       await tester.pump();
-      expect(tester.widget<SelectableText>(find.byType(SelectableText)).data, 'first session');
+      expect(logText(tester), 'first session');
       expect(find.byTooltip(tr(Strings.globalActionsRemove)), findsNothing);
     });
   });
@@ -395,7 +467,7 @@ void main() {
     testWidgets('Changelog lists entries, issue rows link to GitHub', (tester) async {
       await pumpScreen(
         tester,
-        ChangelogScreen(build: '4000', fetcher: (url) async => '* Fix A (#12)\n* Fix B\nnot an entry'),
+        ChangelogScreen(buildNumber: '4000', fetcher: (url) async => '* Fix A (#12)\n* Fix B\nnot an entry'),
       );
       await tester.pump();
       await tester.pump();

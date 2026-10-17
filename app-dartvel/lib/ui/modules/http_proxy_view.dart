@@ -43,7 +43,7 @@ final class HttpProxyBuilder {
   }) : bypassDomains = bypassDomains ?? <ListItem<String>>[];
 
   /// `HTTPProxyModule.builder()`.
-  factory HttpProxyBuilder.fromJson(Map<String, dynamic> value) {
+  factory HttpProxyBuilder.fromModule(Map<String, dynamic> value) {
     final proxy = _splitEndpoint(value['proxy'] as String?);
     final secure = _splitEndpoint(value['secureProxy'] as String?);
     return HttpProxyBuilder(
@@ -94,7 +94,7 @@ final class HttpProxyBuilder {
 }
 
 final ModuleBuilderCache<HttpProxyBuilder> httpProxyBuilders =
-    ModuleBuilderCache<HttpProxyBuilder>(HttpProxyBuilder.fromJson);
+    ModuleBuilderCache<HttpProxyBuilder>(HttpProxyBuilder.fromModule);
 
 /// Upstream's save-time error for this HTTP proxy module, localised; null when valid.
 String? httpProxyValidationError(TaggedModule module) {
@@ -120,7 +120,6 @@ List<Widget> httpProxySections(BuildContext context, ModuleViewArgs args) {
             label: tr(Strings.globalNounsAddress),
             value: address,
             placeholder: AddressFamily.v4.addressPlaceholder,
-            keyboardType: TextInputType.url,
             onChanged: onAddress,
           ),
           PSTextRow(
@@ -128,7 +127,6 @@ List<Widget> httpProxySections(BuildContext context, ModuleViewArgs args) {
             label: tr(Strings.globalNounsPort),
             value: port,
             placeholder: '1080',
-            keyboardType: TextInputType.number,
             onChanged: onPort,
           ),
         ],
@@ -147,12 +145,11 @@ List<Widget> httpProxySections(BuildContext context, ModuleViewArgs args) {
           label: 'URL',
           value: builder.pacURLString,
           placeholder: 'http://proxy.com/pac.url',
-          keyboardType: TextInputType.url,
           onChanged: (value) => edit((b) => b.pacURLString = value),
         ),
       ],
     ),
-    EditableListSection<String>(
+    editableListSection<String>(
       key: const ValueKey<String>('proxy/bypass'),
       header: tr(Strings.entitiesHttpProxyBypassDomains),
       addTitle: tr(Strings.modulesHttpProxyBypassDomainsAdd),
@@ -164,7 +161,6 @@ List<Widget> httpProxySections(BuildContext context, ModuleViewArgs args) {
         key: ValueKey<String>('proxy/bypass/${item.id}'),
         value: item.value,
         placeholder: 'example.com',
-        keyboardType: TextInputType.url,
         semanticLabel: tr(Strings.entitiesHttpProxyBypassDomains),
         onChanged: setValue,
       ),

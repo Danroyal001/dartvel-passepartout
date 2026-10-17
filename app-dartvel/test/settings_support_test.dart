@@ -46,7 +46,6 @@ void main() {
         as Map<String, dynamic>;
     final websites = constants['websites'] as Map<String, dynamic>;
     final github = constants['github'] as Map<String, dynamic>;
-    final emails = constants['emails'] as Map<String, dynamic>;
     expect(SettingsConstants.homeUrl, websites['homeURL']);
     expect(SettingsConstants.partoutUrl, websites['partoutURL']);
     expect(SettingsConstants.faqUrl, '${websites['homeURL']}/faq');

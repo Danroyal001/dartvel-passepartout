@@ -11,19 +11,20 @@
 import '../../../domain/profile.dart';
 
 final class ModuleBuilderCache<B> {
-  ModuleBuilderCache(this._fromJson);
+  ModuleBuilderCache(this._fromModule);
 
-  final B Function(Map<String, dynamic> value) _fromJson;
+  /// Reads a builder from a Partout module map (e.g. `DnsBuilder.fromModule`).
+  final B Function(Map<String, dynamic> module) _fromModule;
   final Map<String, ({Map<String, dynamic> written, B builder})> _entries =
       <String, ({Map<String, dynamic> written, B builder})>{};
 
   /// The builder for [module]: the cached one if the draft still holds what
-  /// it last wrote, else a fresh one from the module JSON.
+  /// it last wrote, else a fresh one read from the module map.
   B resolve(TaggedModule module) {
     final value = module.value;
     final entry = _entries[module.id];
-    if (entry != null && jsonEquals(entry.written, value)) return entry.builder;
-    final builder = _fromJson(value);
+    if (entry != null && moduleValuesEqual(entry.written, value)) return entry.builder;
+    final builder = _fromModule(value);
     _entries[module.id] = (written: value, builder: builder);
     return builder;
   }
@@ -42,19 +43,19 @@ final class ModuleBuilderCache<B> {
   void clear() => _entries.clear();
 }
 
-/// Deep equality of decoded JSON values.
-bool jsonEquals(Object? left, Object? right) {
+/// Deep equality of module values (maps, lists and scalars).
+bool moduleValuesEqual(Object? left, Object? right) {
   if (left is Map && right is Map) {
     if (left.length != right.length) return false;
     for (final key in left.keys) {
-      if (!right.containsKey(key) || !jsonEquals(left[key], right[key])) return false;
+      if (!right.containsKey(key) || !moduleValuesEqual(left[key], right[key])) return false;
     }
     return true;
   }
   if (left is List && right is List) {
     if (left.length != right.length) return false;
     for (var i = 0; i < left.length; i++) {
-      if (!jsonEquals(left[i], right[i])) return false;
+      if (!moduleValuesEqual(left[i], right[i])) return false;
     }
     return true;
   }
