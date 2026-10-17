@@ -3,6 +3,7 @@
 
 // The application: its startup and its root widget. main.dart only runs it.
 
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -20,12 +21,18 @@ import 'state/rule_groups_store.dart';
 import 'ui/desktop_shell.dart';
 import 'ui/kit.dart';
 
-/// What must be in place before the first frame: the launch target, the
-/// strings, the engine boundary and every store (empty).
-Future<void> prepareDartvelVpn(List<String> arguments) async {
-  // Where this launch renders: nothing to decide unless the build opted into
-  // the terminal, in which case a launch with no display may leave for it.
-  await negotiateDartvelLaunch(arguments);
+/// Startup: the empty stores are in place at once; the saved data fills
+/// them in the background, so the first frame does not wait on the disk.
+@DVBoot()
+void _startDartvelVpn(DVBoot boot) {
+  prepareDartvelVpn();
+  unawaited(loadDartvelVpn());
+}
+
+/// What must be in place before the first frame: the strings, the engine
+/// boundary and every store (empty). DV.run has already chosen where this
+/// launch renders.
+void prepareDartvelVpn() {
   loadStrings();
   if (kIsWeb) VpnService.instance = const WebVpnService();
   AppLog.init();
@@ -57,12 +64,11 @@ void loadStrings() {
   const DVI18n().useLocale(LocaleTag(stringCatalogs.containsKey(tag) ? tag : 'en'));
 }
 
-// The arguments are what a file association, an app link or a second
-// launch hands a desktop application; the router opens them.
-Widget createDartvelApp({List<String> arguments = const <String>[]}) => DartvelVpnApp(arguments: arguments);
-
-@DVFunctionalWidget()
-Widget _dartvelVpnApp(BuildContext context, {required List<String> arguments}) {
+/// The application root: the framework's router (which opens the launch
+/// arguments a file association, an app link or a second launch hands a
+/// desktop application) in the theme the person chose.
+@DVAppRoot()
+Widget _dartvelVpnRoot(BuildContext context, DVAppParts parts) {
   final appearance = context.global<Preferences>().appearance;
   return MaterialApp.router(
     title: 'Dartvel VPN',
@@ -74,6 +80,6 @@ Widget _dartvelVpnApp(BuildContext context, {required List<String> arguments}) {
       .dark => ThemeMode.dark,
       .system => ThemeMode.system,
     },
-    routerConfig: createDartvelRouter(arguments: arguments),
+    routerConfig: parts.router,
   );
 }

@@ -9,11 +9,7 @@ import 'package:dartvel_core/dartvel.dart';
 
 import '../../platform/vpn_service.dart';
 
-// TODO(dartvel): this belongs in the annotation as
-// `@DVBackendFunction(middleware: [...])`; Dartvel 0.12.2 has no such field,
-// only the separate @DVUseMiddleware (docs/DARTVEL-GAPS.md).
-@DVBackendFunction()
-@DVUseMiddleware(<DVMiddlewareKey>[DVMiddlewares.bodyLimit, DVMiddlewares.rateLimit])
+@DVBackendFunction(middleware: [DVMiddlewares.bodyLimit, DVMiddlewares.rateLimit])
 Future<String> _importProfileText({required String text, required String name}) async {
   if (text.length > 1024 * 1024) throw const FormatException('Configuration exceeds 1 MB');
   if (name.trim().isEmpty) throw const FormatException('Name is required');

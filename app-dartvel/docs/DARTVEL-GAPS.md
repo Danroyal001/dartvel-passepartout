@@ -104,19 +104,13 @@ a camera preview stream from Dartvel.
 
 ## conventions (audit 2026-10, Dartvel 0.12.2)
 
-### `DV.run()` cannot be the whole of `main`
+### Closed in Dartvel 0.13
 
-`DV.run(Widget app)` only hands a widget to Flutter. It takes neither the launch arguments
-(`negotiateDartvelLaunch(arguments)`, `createDartvelRouter(arguments:)`) nor startup work, so an
-app with stores to prepare before the first frame and load after it spells both out in `main`.
-Repro: `void main() => DV.run();` does not compile. lib/main.dart keeps the smallest form with a
-TODO. Wanted: `DV.run()` that reads the arguments and runs declared startup/after-first-frame hooks.
-
-### `@DVBackendFunction` has no `middleware:` field
-
-Middleware is a separate `@DVUseMiddleware([...])` annotation. Repro:
-`@DVBackendFunction(middleware: [DVMiddlewares.rateLimit])` -> undefined named parameter.
-lib/backend/functions/import_profile_text.dart uses `@DVUseMiddleware` with a TODO.
+- `main` is `void main(List<String> args) => DV.run(args);`. Startup is a private `@DVBoot`
+  (lib/app.dart) and the root an `@DVAppRoot` using `parts.router`. The saved data loads in
+  the background from the boot step, so the first frame does not wait on the disk; Dartvel has
+  no after-first-frame hook, and per the owner boot stays independent of any UI.
+- `@DVBackendFunction(middleware: [...])` replaced `@DVUseMiddleware` on backend functions.
 
 ### Typed backend functions stop at primitives and maps
 
