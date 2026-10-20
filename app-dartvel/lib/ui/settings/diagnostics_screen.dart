@@ -312,14 +312,14 @@ Widget _liveLogScreen(
     title: title,
     // A DVIconButton is always enabled: with no lines, each does nothing.
     actions: <Widget>[
-      DVIconButton(
+      PSIconAction(
         icon: Icons.copy,
         label: AppStrings.copy,
         onPressed: () {
           if (lines.isNotEmpty) copyToClipboard(context, text);
         },
       ),
-      DVIconButton(
+      PSIconAction(
         icon: Icons.share,
         label: tr(Strings.globalActionsShare),
         onPressed: () {
@@ -327,7 +327,7 @@ Widget _liveLogScreen(
         },
       ),
       if (!isTunnel)
-        DVIconButton(
+        PSIconAction(
           icon: Icons.delete_outline,
           label: tr(Strings.globalActionsRemove),
           onPressed: () {

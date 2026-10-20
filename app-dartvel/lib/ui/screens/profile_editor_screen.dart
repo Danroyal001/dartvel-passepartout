@@ -161,7 +161,7 @@ Widget _profileEditorScreen(BuildContext context, {required String profileId}) {
                 title: 'ID',
                 subtitle: current.id,
                 monospaced: true,
-                trailing: DVIconButton(
+                trailing: PSIconAction(
                   icon: Icons.copy,
                   size: 18,
                   label: AppStrings.copy,

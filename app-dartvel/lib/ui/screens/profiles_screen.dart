@@ -52,7 +52,7 @@ Widget _profilesScreen(BuildContext context) {
         : ProfileList(header: header, profiles: profiles.filtered);
   }
 
-  Widget settingsButton() => DVIconButton(
+  Widget settingsButton() => PSIconAction(
         icon: Icons.settings_outlined,
         label: tr(Strings.globalNounsSettings),
         onPressed: () => DV.Navigation.push(DVRoutes.settings),
@@ -184,7 +184,7 @@ Widget _addProfileMenu(BuildContext context) => MenuAnchor(
           ),
         ],
       ],
-      builder: (context, controller, _) => DVIconButton(
+      builder: (context, controller, _) => PSIconAction(
         icon: Icons.add,
         label: tr(Strings.globalActionsAdd),
         onPressed: () => controller.isOpen ? controller.close() : controller.open(),
@@ -332,7 +332,7 @@ Widget _profileGridCell(BuildContext context, {required TunnelProfile profile}) 
           child: DVBox.row(
             <Widget>[
               Expanded(child: ProfileCard(profile: profile)),
-              DVIconButton(
+              PSIconAction(
                 icon: Icons.info_outline,
                 label: tr(Strings.globalActionsEdit),
                 onPressed: () => editProfile(profile),

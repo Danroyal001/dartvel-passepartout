@@ -94,7 +94,7 @@ Widget _openVPNRemoteRow(
   final theme = Theme.of(context);
   return DVBox.row(
     <Widget>[
-      DVIconButton(
+      PSIconAction(
         icon: Icons.remove_circle,
         color: PSColors.error,
         label: tr(Strings.globalActionsDelete),
