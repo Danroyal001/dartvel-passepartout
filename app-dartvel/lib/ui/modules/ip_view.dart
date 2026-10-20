@@ -195,7 +195,7 @@ List<Widget> ipSections(BuildContext context, ModuleViewArgs args) {
 @DVFunctionalWidget()
 Widget _routeRow(BuildContext context, {required String description, required VoidCallback onRemove}) => DVBox.row(
       <Widget>[
-        DVIconButton(
+        PSIconAction(
           icon: Icons.remove_circle,
           color: PSColors.error,
           label: tr(Strings.globalActionsDelete),
@@ -204,7 +204,7 @@ Widget _routeRow(BuildContext context, {required String description, required Vo
         Expanded(
           child: PSRow(
             title: description,
-            trailing: DVIconButton(
+            trailing: PSIconAction(
               icon: Icons.copy,
               size: 18,
               label: AppStrings.copy,

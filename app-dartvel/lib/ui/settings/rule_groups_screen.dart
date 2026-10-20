@@ -29,7 +29,7 @@ Widget _ruleGroupsScreen(BuildContext context) {
   return PSScaffold(
     title: AppStrings.ruleGroups,
     actions: <Widget>[
-      DVIconButton(icon: Icons.add, label: AppStrings.addRuleGroup, onPressed: () => createRuleGroup(context)),
+      PSIconAction(icon: Icons.add, label: AppStrings.addRuleGroup, onPressed: () => createRuleGroup(context)),
     ],
     body: PSForm(children: <Widget>[
       PSSection(

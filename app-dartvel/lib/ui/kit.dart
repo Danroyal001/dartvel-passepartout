@@ -502,6 +502,23 @@ String middleTruncated(String text, {int maxLength = 24}) {
 /// `LongContentEditor` / long read-only content: a full page of monospaced
 /// text. Editable when [onChanged] is set (each keystroke reports it);
 /// otherwise selectable (pages are), with a copy action.
+/// An icon-only action: the icon, a tooltip that is also its screen-reader
+/// name, and a 48 by 48 target. Dartvel 0.13.6 removed DVIconButton, which
+/// stretched to fill whatever held it.
+@DVFunctionalWidget()
+Widget _pSIconAction(
+  BuildContext context, {
+  required IconData icon,
+  required String label,
+  VoidCallback? onPressed,
+  Color? color,
+  double size = 24,
+}) =>
+    DVBox(
+      Icon(icon, size: size, color: color),
+      DVModifier().tooltip(label).onTap(onPressed ?? () {}).minimumTapTarget(width: 48, height: 48),
+    );
+
 @DVFunctionalWidget()
 Widget _pSLongContentPage(
   BuildContext context, {
@@ -515,7 +532,7 @@ Widget _pSLongContentPage(
     return PSScaffold(
       title: title,
       actions: <Widget>[
-        DVIconButton(
+        PSIconAction(
           icon: Icons.copy,
           label: AppStrings.copy,
           onPressed: () => copyToClipboard(context, text),

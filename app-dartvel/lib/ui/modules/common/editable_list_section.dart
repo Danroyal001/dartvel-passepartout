@@ -44,7 +44,7 @@ Widget _editableListSection(
           onDismissed: (_) => onRemove(i),
           child: DVBox.row(
             <Widget>[
-              DVIconButton(icon: Icons.remove_circle, color: PSColors.error, label: delete, onPressed: () => onRemove(i)),
+              PSIconAction(icon: Icons.remove_circle, color: PSColors.error, label: delete, onPressed: () => onRemove(i)),
               Expanded(child: rowBuilder(context, i)),
             ],
             spacing: 0,
